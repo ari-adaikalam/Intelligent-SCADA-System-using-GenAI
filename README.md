@@ -4,16 +4,13 @@
 
 The objective of this project is to design an **Intelligent SCADA System** powered by **Generative AI**, transforming traditional SCADA from a passive monitoring tool into an active, AI-driven decision-support platform for industrial environments.
 
-**🔗 Deployed Application**: [https://swat-dashboard-hlxg.onrender.com/](https://swat-dashboard-hlxg.onrender.com/)
-
-> **Note**: The deployed version uses **Groq (llama-3.3-70b-versatile)** as the LLM. The local version used **Mistral 7B Instruct v0.3 (4-bit quantized)** via Ollama, which delivered superior RAG and SQL generation performance due to tighter domain grounding.
+---
 
 ## Block Diagram
+
 <img width="1438" height="822" alt="Block Diagram" src="https://github.com/user-attachments/assets/c7584171-b71b-4095-8320-54ad256b3a98" />
 
-## Architecture Overview
-<img width="1254" height="1254" alt="Project Architecture Diagram" src="https://github.com/user-attachments/assets/ee1e1efe-5227-4fb5-aa24-4edce72e6c21" />
-
+---
 ## The Project Involves
 
 - **ASP.NET Core 8.0 (C#)**: Backend API orchestration, session memory management, and real-time SignalR streaming.
@@ -25,10 +22,75 @@ The objective of this project is to design an **Intelligent SCADA System** power
 - **iTextSharp & EPPlus**: Automated PDF and Excel report generation from within the chat interface.
 - **Chart.js**: Inline data visualizations rendered dynamically in chat responses.
 
+--- 
+
+
+### Live Dashboard
+<table>
+  <tr>
+    <td><img src="screenshots/01_live_dashboard_top.png" width="400"/></td>
+    <td><img src="screenshots/02_live_dashboard_bottom.png" width="400"/></td>
+  </tr>
+</table>
+
+### Predictive AI — ML Anomaly Detection
+<table>
+  <tr>
+    <td><img src="screenshots/05_ml_normal.png" width="400"/></td>
+    <td><img src="screenshots/06_ml_anomaly.png" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/03_ml_degrading.png" width="400"/></td>
+    <td><img src="screenshots/04_ml_faulted.png" width="400"/></td>
+  </tr>
+</table>
+
+### Analytics Dashboard
+<table>
+  <tr>
+    <td><img src="screenshots/07_analytics_kpi.png" width="400"/></td>
+    <td><img src="screenshots/08_analytics_trend.png" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/09_analytics_distribution.png" width="400"/></td>
+    <td><img src="screenshots/10_analytics_rolling_stats.png" width="400"/></td>
+  </tr>
+</table>
+
+### AI Chatbot
+<table>
+  <tr>
+    <td><img src="screenshots/11_chat_query_response.png" width="400"/></td>
+    <td><img src="screenshots/12_chat_inline_chart.png" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/13_chat_anomaly_detection.png" width="400"/></td>
+    <td><img src="screenshots/14_chat_root_cause.png" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/15_chat_report_generation.png" width="400"/></td>
+    <td></td>
+  </tr>
+</table>
+---
+
+**🔗 Deployed Application**: [Live Demo](https://swat-dashboard-hlxg.onrender.com/)
+> **Note**: The deployed version uses **Groq (llama-3.3-70b-versatile)** as the LLM. The local version used **Mistral 7B Instruct v0.3 (4-bit quantized)** via Ollama, which delivered superior RAG and SQL generation performance due to tighter domain grounding and please be aware that the application may require a few minutes to cold-start upon your first visit.
+
+## Architecture Overview
+
+<img width="1254" height="1254" alt="Architecture Overview" src="https://github.com/user-attachments/assets/ee1e1efe-5227-4fb5-aa24-4edce72e6c21" />
+
+---
+
 ## ML Architecture
 
-The anomaly detection pipeline follows a hierarchical 3-stage classification approach:
-<img width="1122" height="1402" alt="ML Architecture Diagram" src="https://github.com/user-attachments/assets/441a30a7-ec53-423f-9da1-d4cb1c725d83" />
+### The ML pipeline follows a hierarchical 3-stage classification approach:
+
+
+<img width="1122" height="1402" alt="ML Architecture" src="https://github.com/user-attachments/assets/441a30a7-ec53-423f-9da1-d4cb1c725d83" />
+
+### 
 
 | Stage | Models Trained | Selection Metric | Best Model | Test Performance |
 |-------|---------------|-----------------|------------|-----------------|
@@ -43,8 +105,11 @@ The anomaly detection pipeline follows a hierarchical 3-stage classification app
 - **F1-Macro (Stage 2)**: Handles class imbalance across fault types.
 - **Accuracy (Stage 3)**: Precise component identification for targeted maintenance.
 
+---
+
 ## GenAI Architecture
-<img width="1122" height="1402" alt="GenAI Architecture Diagram" src="https://github.com/user-attachments/assets/9d1e2bd2-5e8e-40d1-b278-cd8f8ce23f4f" />
+
+<img width="1122" height="1402" alt="GenAI Architecture" src="https://github.com/user-attachments/assets/9d1e2bd2-5e8e-40d1-b278-cd8f8ce23f4f" />
 
 ## RAG Pipeline
 
@@ -62,6 +127,8 @@ The conversational interface is powered by a 7-stage RAG pipeline:
 
 > RAG = Retrieval-Augmented Generation — grounds LLM responses to actual plant data, eliminating hallucination of schema and column names.
 
+---
+
 ## Alert System
 
 Confidence-based escalation with smart cooldown and state persistence filtering:
@@ -75,6 +142,8 @@ Confidence-based escalation with smart cooldown and state persistence filtering:
 
 Each alert includes the affected component, top 3 suspected causes, confidence level, timestamp, and recommended corrective actions.
 
+---
+
 ## Key Innovations
 
 - **Conversational SCADA Interface** — Ask the system anything in plain English; it queries the database, runs ML inference, and narrates the results.
@@ -82,6 +151,8 @@ Each alert includes the affected component, top 3 suspected causes, confidence l
 - **GenAI Anomaly Narration** — Not just fault detection; the system describes the probable cause and suggests corrective action.
 - **Inline Visualizations** — Chart.js charts generated dynamically within chat responses based on query context.
 - **ASP.NET Core MVC** — Eliminated full-page refreshes, reduced latency via SignalR, and improved UX significantly.
+
+---
 
 ## License
 
