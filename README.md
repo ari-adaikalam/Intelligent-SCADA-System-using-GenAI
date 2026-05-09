@@ -8,23 +8,11 @@ The objective of this project is to design an **Intelligent SCADA System** power
 
 > **Note**: The deployed version uses **Groq (llama-3.3-70b-versatile)** as the LLM. The local version used **Mistral 7B Instruct v0.3 (4-bit quantized)** via Ollama, which delivered superior RAG and SQL generation performance due to tighter domain grounding.
 
+## Block Diagram
+<img width="1438" height="822" alt="Block Diagram" src="https://github.com/user-attachments/assets/c7584171-b71b-4095-8320-54ad256b3a98" />
+
 ## Architecture Overview
-
-[![Architecture](docs/architecture.png)](https://swat-dashboard-hlxg.onrender.com/)
-
-The system is composed of three core services communicating over HTTP/SignalR:
-
-```
-Browser (SWAT Dashboard)
-        ↕ HTTPS / SignalR
-ASP.NET Core Backend (C#)
-        ↕ HTTP/JSON
-Python RAG Service (Flask) ──→ ML API (3-stage inference)
-        ↕                 ↕
-  ChromaDB (Vector DB)  MS SQL Server (SCADA Data)
-        ↕
-  LLM (Mistral 7B / Groq)
-```
+<img width="1254" height="1254" alt="Project Architecture Diagram" src="https://github.com/user-attachments/assets/ee1e1efe-5227-4fb5-aa24-4edce72e6c21" />
 
 ## The Project Involves
 
@@ -40,6 +28,7 @@ Python RAG Service (Flask) ──→ ML API (3-stage inference)
 ## ML Architecture
 
 The anomaly detection pipeline follows a hierarchical 3-stage classification approach:
+<img width="1122" height="1402" alt="ML Architecture Diagram" src="https://github.com/user-attachments/assets/441a30a7-ec53-423f-9da1-d4cb1c725d83" />
 
 | Stage | Models Trained | Selection Metric | Best Model | Test Performance |
 |-------|---------------|-----------------|------------|-----------------|
@@ -53,6 +42,9 @@ The anomaly detection pipeline follows a hierarchical 3-stage classification app
 - **Recall (Stage 1)**: Can't afford to miss anomalies — it's the first gate.
 - **F1-Macro (Stage 2)**: Handles class imbalance across fault types.
 - **Accuracy (Stage 3)**: Precise component identification for targeted maintenance.
+
+## GenAI Architecture
+<img width="1122" height="1402" alt="GenAI Architecture Diagram" src="https://github.com/user-attachments/assets/9d1e2bd2-5e8e-40d1-b278-cd8f8ce23f4f" />
 
 ## RAG Pipeline
 
@@ -89,8 +81,7 @@ Each alert includes the affected component, top 3 suspected causes, confidence l
 - **From Reactive → Proactive** — Predictive maintenance embedded directly in the SCADA loop.
 - **GenAI Anomaly Narration** — Not just fault detection; the system describes the probable cause and suggests corrective action.
 - **Inline Visualizations** — Chart.js charts generated dynamically within chat responses based on query context.
-- **Privacy-First (Local AI)** — Designed for Mistral 7B running locally on an RTX 3060; no data leaves the premises.
-- **Migrated from Streamlit → ASP.NET Core MVC** — Eliminated full-page refreshes, reduced latency via SignalR, and improved UX significantly.
+- **ASP.NET Core MVC** — Eliminated full-page refreshes, reduced latency via SignalR, and improved UX significantly.
 
 ## License
 
