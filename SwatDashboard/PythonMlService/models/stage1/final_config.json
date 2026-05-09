@@ -1,0 +1,32 @@
+{
+  "stage": 1,
+  "task": "Binary Anomaly Detection",
+  "best_model": "XGBoost",
+  "best_model_type": "xgboost",
+  "hybrid_performance": {
+    "model_name": "XGBoost",
+    "dataset": "Hybrid",
+    "accuracy": 0.936495775188976,
+    "precision": 0.9972692098615419,
+    "recall": 0.9169722005792158,
+    "f1": 0.9554365890831668,
+    "roc_auc": 0.9912722092111609,
+    "false_negatives": 28239,
+    "false_positives": 854,
+    "cm": "[[117158    854]\n [ 28239 311876]]"
+  },
+  "simulator_performance": {
+    "model_name": "XGBoost",
+    "dataset": "Simulator",
+    "accuracy": 0.8899299768518518,
+    "precision": 0.998226313803434,
+    "recall": 0.8743027841800501,
+    "f1": 0.9321639341572768,
+    "roc_auc": 0.9886029301389404,
+    "false_negatives": 187879,
+    "false_positives": 2322,
+    "cm": "[[ 230983    2322]\n [ 187879 1306816]]"
+  },
+  "trained_at": "2026-01-22T13:22:05.492974",
+  "num_features": 40
+}

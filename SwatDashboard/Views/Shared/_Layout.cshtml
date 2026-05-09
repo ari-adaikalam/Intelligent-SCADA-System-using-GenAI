@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SWaT Dashboard</title>
+    <link rel="stylesheet" href="~/css/chat.css" />
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- Your chat.js -->
+    <script src="~/js/chat.js"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    
+    <!-- Clean Industrial Theme - Whites, Light Blues, Crisp Borders -->
+    <style>
+        /* ========================================
+           CLEAN INDUSTRIAL THEME
+           Whites, Light Blues, Crisp Borders
+           ======================================== */
+        
+        :root {
+            --primary-blue: #4A90E2;
+            --light-blue: #E8F4FD;
+            --border-gray: #D1D9E6;
+            --text-primary: #2C3E50;
+            --text-secondary: #7F8C8D;
+            --bg-white: #FFFFFF;
+            --bg-light: #F8F9FA;
+            --success-green: #27AE60;
+            --warning-yellow: #F39C12;
+            --danger-red: #E74C3C;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container-fluid {
+            padding: 20px;
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+
+        /* ========================================
+           HEADER
+           ======================================== */
+        .swat-header {
+            background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.90));
+            border: 2px solid var(--border-gray);
+            border-radius: 16px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .swat-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: 0.5px;
+            margin: 0;
+        }
+
+        .swat-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ========================================
+           TAB NAVIGATION
+           ======================================== */
+        .nav-tabs {
+            border-bottom: 2px solid var(--border-gray);
+            margin-bottom: 24px;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 16px;
+            padding: 12px 24px;
+            margin-right: 8px;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+            background: transparent;
+        }
+
+        .nav-tabs .nav-link:hover {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+        }
+
+        .nav-tabs .nav-link.active {
+            background: LightBlue;
+            color: var(--primary-blue);
+            border-bottom: 3px solid var(--primary-blue);
+            font-weight: 700;
+        }
+
+        /* ========================================
+           SECTION TITLES
+           ======================================== */
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            margin-top: 24px;
+            color: var(--text-primary);
+        }
+
+        /* ========================================
+           PLANT STATUS STRIP - 4 Cards
+           ======================================== */
+        .swat-strip {
+            display: flex;
+            gap: 18px;
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .swat-card {
+            flex: 1;
+            background: white;
+            border: 2px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 18px;
+            min-height: 92px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .swat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .swat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+        }
+
+        .swat-value {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-primary);
+        }
+
+        .swat-value-small {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--text-primary);
+        }
+
+        /* ========================================
+           STAGE CARDS
+           ======================================== */
+        .stage-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stage-card {
+            width: 100%;
+            background: white;
+            border: 2px solid var(--border-gray);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .stage-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0 0 14px 0;
+            letter-spacing: 0.3px;
+            color: var(--text-primary);
+        }
+
+        .stage-divider {
+            border: none;
+            border-top: 2px solid var(--border-gray);
+            margin: 16px 0;
+        }
+
+        /* ========================================
+           KPI BOXES
+           ======================================== */
+        .kpi-row {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .kpi {
+            flex: 1;
+            min-width: 150px;
+            background: var(--bg-light);
+            border: 2px solid var(--border-gray);
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 74px;
+            transition: all 0.3s ease;
+        }
+
+        .kpi:hover {
+            border-color: var(--primary-blue);
+            transform: translateY(-2px);
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .kpi-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* ========================================
+           BADGES
+           ======================================== */
+        .badge {
+            font-size: 13px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            border: 2px solid;
+        }
+
+        .ok {
+            background: rgba(39,174,96,0.15);
+            border-color: var(--success-green);
+            color: var(--success-green);
+        }
+
+        .warn {
+            background: rgba(243,156,18,0.15);
+            border-color: var(--warning-yellow);
+            color: var(--warning-yellow);
+        }
+
+        .bad {
+            background: rgba(231,76,60,0.15);
+            border-color: var(--danger-red);
+            color: var(--danger-red);
+        }
+
+        /* ========================================
+           SPARKLINES
+           ======================================== */
+        .sparkline-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .sparkline-container {
+            height: 90px;
+            width: 100%;
+            background: var(--bg-light);
+            border: 2px solid var(--border-gray);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        /* ========================================
+           ML SECTION
+           ======================================== */
+        .ml-card {
+            background: white;
+            border: 2px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .ml-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .ml-status-card {
+            background: white;
+            border: 3px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            min-height: 120px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .ml-status-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .ml-status-normal {
+            border-color: var(--success-green);
+            background: linear-gradient(135deg, #ffffff 0%, #e8f8f5 100%);
+        }
+
+        .ml-status-degrading {
+            border-color: var(--warning-yellow);
+            background: linear-gradient(135deg, #ffffff 0%, #fef5e7 100%);
+        }
+
+        .ml-status-faulted {
+            border-color: var(--danger-red);
+            background: linear-gradient(135deg, #ffffff 0%, #fadbd8 100%);
+        }
+
+        .ml-status-monitor {
+            border-color: var(--primary-blue);
+            background: linear-gradient(135deg, #ffffff 0%, var(--light-blue) 100%);
+        }
+
+        .ml-card-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .ml-card-value {
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .ml-card-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ========================================
+           ANALYTICS DASHBOARD STYLES
+           ======================================== */
+        
+        /* KPI Summary Cards */
+        .kpi-summary-card {
+            background: white;
+            border: 2px solid var(--border-gray);
+            border-radius: 10px;
+            padding: 18px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .kpi-summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-blue);
+        }
+
+        .kpi-summary-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .kpi-summary-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* Chart Cards */
+        .analytics-chart-card {
+            background: white;
+            border: 2px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .analytics-chart-card h6 {
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        /* ========================================
+           FORM ELEMENTS
+           ======================================== */
+        .form-label {
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .form-select, .form-control {
+            background: white;
+            border: 2px solid var(--border-gray);
+            color: var(--text-primary);
+            font-size: 14px;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        .form-select:focus, .form-control:focus {
+            background: white;
+            border-color: var(--primary-blue);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 3px rgba(74,144,226,0.1);
+        }
+
+        .form-check-input {
+            border: 2px solid var(--border-gray);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
+
+        .form-check-label {
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-range {
+            height: 6px;
+        }
+
+        .form-range::-webkit-slider-thumb {
+            background: var(--primary-blue);
+            border: 2px solid white;
+            box-shadow: var(--shadow);
+        }
+
+        /* ========================================
+           BUTTONS
+           ======================================== */
+        .btn-industrial {
+            background: linear-gradient(135deg, var(--primary-blue), #357ABD);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .btn-industrial:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, #357ABD, var(--primary-blue));
+            color: white;
+        }
+
+        .btn-export {
+            background: white;
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            margin: 4px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-export:hover {
+            background: var(--primary-blue);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* ========================================
+           ALERTS
+           ======================================== */
+        .alert {
+            border-radius: 10px;
+            border: 2px solid;
+            padding: 16px;
+            font-weight: 600;
+        }
+
+        .alert-danger {
+            background: rgba(231,76,60,0.1);
+            border-color: var(--danger-red);
+            color: var(--danger-red);
+        }
+
+        /* ========================================
+           TABLES
+           ======================================== */
+        .table {
+            color: var(--text-primary);
+            background: white;
+        }
+
+        .table thead {
+            background: var(--light-blue);
+            font-weight: 700;
+            border-bottom: 2px solid var(--border-gray);
+        }
+
+        .table tbody tr {
+            border-bottom: 1px solid var(--border-gray);
+        }
+
+        .table tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        /* ========================================
+           RESPONSIVE DESIGN
+           ======================================== */
+        @@media (max-width: 768px) {
+            .swat-header {
+                padding: 16px 20px;
+            }
+
+            .swat-title {
+                font-size: 24px;
+            }
+
+            .swat-strip {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .kpi-row {
+                flex-direction: column;
+            }
+
+            .nav-tabs .nav-link {
+                font-size: 14px;
+                padding: 10px 16px;
+            }
+
+            .container-fluid {
+                padding: 12px;
+            }
+
+            .analytics-chart-card {
+                padding: 12px;
+            }
+        }
+
+        .attention-row {
+            display: flex;
+            flex-wrap: nowrap; /* never go to next line */
+            gap: 12px;
+            width: 100%;
+            overflow-x: auto; /* if too many cards, scroll horizontally */
+            padding-bottom: 6px;
+        }
+
+        .attention-item {
+            flex: 1 1 0; /* stretch equally to occupy full row */
+            min-width: 240px; /* prevents cards becoming too tiny */
+        }
+
+        /* Make both cards same height within the row */
+        .analytics-chart-card.h-100 {
+            height: 100%;
+        }
+
+        .chart-placeholder.hidden {
+            display: none !important;
+        }
+        /* Make inner area stretch */
+        .card-body-flex {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Chart fills remaining space */
+        #distributionChart {
+            flex: 1;
+            min-height: 320px; /* keep minimum */
+        }
+
+        /* Percentile table scrolls if it grows */
+        #percentileTable {
+            flex: 1;
+            overflow: auto;
+        }
+
+        /* ========================================
+           UTILITY CLASSES
+           ======================================== */
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        .text-success {
+            color: var(--success-green) !important;
+        }
+
+        small {
+            color: var(--text-secondary);
+        }
+    </style>
+    
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="container-fluid">
+        @RenderBody()
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

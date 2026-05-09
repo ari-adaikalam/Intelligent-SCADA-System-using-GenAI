@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SignalR for real-time updates -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
+    
+    <!-- SQL Server -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.5" />
+    <PackageReference Include="Dapper" Version="2.1.28" />
+    
+    <!-- Export functionality -->
+    <PackageReference Include="EPPlus" Version="7.0.5" />
+    <PackageReference Include="iText7" Version="8.0.2" />
+    <PackageReference Include="iText7.pdfhtml" Version="5.0.2" />
+
+	  <!-- HTTP Client for Python API -->
+	  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+ 
+</Project>

@@ -1,0 +1,63 @@
+{
+  "stage": 2,
+  "task": "State Classification (3 classes)",
+  "classes": [
+    "ANOMALY",
+    "DEGRADING",
+    "FAULTED"
+  ],
+  "best_model": "LSTM",
+  "best_model_type": "lstm",
+  "sequence_length": 60,
+  "hybrid_performance": {
+    "model_name": "LSTM",
+    "dataset": "Training",
+    "accuracy": 0.9885945398040324,
+    "f1_macro": 0.962031090768854,
+    "f1_weighted": 0.9889857555925311,
+    "confusion_matrix": [
+      [
+        71034,
+        2592,
+        22
+      ],
+      [
+        14340,
+        1214089,
+        42
+      ],
+      [
+        6,
+        45,
+        192465
+      ]
+    ],
+    "confusion_rate": 0.013003419810324556
+  },
+  "simulator_performance": {
+    "model_name": "LSTM",
+    "dataset": "Simulator",
+    "accuracy": 0.9885945398040324,
+    "f1_macro": 0.962031090768854,
+    "f1_weighted": 0.9889857555925311,
+    "confusion_matrix": [
+      [
+        71034,
+        2592,
+        22
+      ],
+      [
+        14340,
+        1214089,
+        42
+      ],
+      [
+        6,
+        45,
+        192465
+      ]
+    ],
+    "confusion_rate": 0.013003419810324556
+  },
+  "trained_at": "2026-01-22T15:22:06.780445"
+}

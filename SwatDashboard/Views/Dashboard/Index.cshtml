@@ -1,0 +1,469 @@
+@{
+    ViewData["Title"] = "SWaT Dashboard";
+    Layout = "_Layout";
+}
+
+<!-- Header -->
+<div class="swat-header">
+    <div class="swat-title">
+        Sewage Water Treatment Plant
+    </div>
+    <div class="swat-subtitle">
+        Intelligent SCADA System Using GENAI
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="live-tab" data-bs-toggle="tab" data-bs-target="#live-panel" type="button" role="tab">
+            🔴 Live Dashboard
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-panel" type="button" role="tab">
+            📊 Analytics Dashboard
+        </button>
+    </li>
+    <!-- NEW: AI Chat Tab -->
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-panel" type="button" role="tab">
+            💬 ChatBot
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="dashboardTabsContent">
+    
+    <!-- ====================================================================== -->
+    <!-- LIVE DASHBOARD TAB -->
+    <!-- ====================================================================== -->
+    <div class="tab-pane fade show active" id="live-panel" role="tabpanel">
+        <div id="live-dashboard">
+            
+            <!-- A) PLANT STATUS - 4 Cards -->
+            <h4 class="section-title">A) Plant Status</h4>
+            <div class="swat-strip">
+                <div class="swat-card">
+                    <div class="swat-label">Plant</div>
+                    <div class="swat-value" id="plantId">—</div>
+                </div>
+                <div class="swat-card">
+                    <div class="swat-label">State</div>
+                    <div class="swat-value" id="plantState">—</div>
+                </div>
+                <div class="swat-card">
+                    <div class="swat-label">Last Update (IST)</div>
+                    <div class="swat-value-small" id="lastUpdate">—</div>
+                </div>
+                <div class="swat-card">
+                    <div class="swat-label">Connection</div>
+                    <div class="swat-value" id="connection">—</div>
+                </div>
+            </div>
+
+            <!-- B) PROCESS OVERVIEW - Stage-wise KPIs -->
+            <h4 class="section-title mt-4">B) Process Overview - Stage-wise KPIs</h4>
+            
+            <div class="stage-grid">
+                
+                <!-- Stage 1: Intake -->
+                <div class="stage-card">
+                    <div class="stage-title">Stage 1 - Intake</div>
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <div class="kpi-row" id="stage1Metrics"></div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="sparkline-label">Trend (FIT101)</div>
+                            <div id="stage1Sparkline" class="sparkline-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="stage-divider">
+
+                <!-- Stage 2: Pre-treatment -->
+                <div class="stage-card">
+                    <div class="stage-title">Stage 2 - Pre-treatment</div>
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <div class="kpi-row" id="stage2Metrics"></div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="sparkline-label">Trend (pH)</div>
+                            <div id="stage2Sparkline" class="sparkline-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="stage-divider">
+
+                <!-- Stage 3: Ultrafiltration (UF) -->
+                <div class="stage-card">
+                    <div class="stage-title">Stage 3 - Ultrafiltration (UF)</div>
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <div class="kpi-row" id="stage3Metrics"></div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="sparkline-label">Trend (ΔP)</div>
+                            <div id="stage3Sparkline" class="sparkline-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="stage-divider">
+
+                <!-- Stage 4: Dechlorination (UV) -->
+                <div class="stage-card">
+                    <div class="stage-title">Stage 4 - Dechlorination (UV)</div>
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <div class="kpi-row" id="stage4Metrics"></div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="sparkline-label">Trend (FIT401)</div>
+                            <div id="stage4Sparkline" class="sparkline-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="stage-divider">
+
+                <!-- Stage 5: Reverse Osmosis (RO) -->
+                <div class="stage-card">
+                    <div class="stage-title">Stage 5 - Reverse Osmosis (RO)</div>
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <div class="kpi-row" id="stage5Metrics"></div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="sparkline-label">Trend (pH)</div>
+                            <div id="stage5Sparkline" class="sparkline-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- C) PREDICTIVE AI - ML Based Anomaly Detection -->
+            <h4 class="section-title mt-4">C) Predictive AI - ML Based Anomaly Detection & Predictive Maintenance</h4>
+            
+            <div id="mlOfflineWarning" class="alert alert-danger" style="display: none;">
+                🔴 Plant OFFLINE - ML Inference Paused.
+            </div>
+
+            <div id="mlSection">
+                <!-- ML Status Cards Row -->
+                <div class="row mb-3">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="ml-status-card" id="mlStatusCard">
+                            <div class="ml-card-title">STATUS</div>
+                            <div class="ml-card-value" id="mlStatusValue">—</div>
+                            <div class="ml-card-label" id="mlStatusLabel">Initializing...</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="ml-status-card" id="mlIssueCard">
+                            <div class="ml-card-title">WHAT ISSUE?</div>
+                            <div class="ml-card-value" id="mlIssueValue">—</div>
+                            <div class="ml-card-label" id="mlIssueLabel">Waiting for data...</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="ml-status-card" id="mlActionCard">
+                            <div class="ml-card-title">TOP SUSPECT</div>
+                            <div class="ml-card-value" id="mlActionValue">—</div>
+                            <div class="ml-card-label" id="mlActionLabel">Monitoring...</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="ml-status-card ml-status-monitor" id="mlBufferCard">
+                            <div class="ml-card-title">BUFFER STATUS</div>
+                            <div class="ml-card-value" id="mlBufferValue">⏳ WARMING</div>
+                            <div class="ml-card-label" id="mlBufferLabel">Initializing...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Component Health & Actions -->
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <h6>Top 3 Suspects</h6>
+                        <div id="componentHealth"></div>
+                    </div>
+
+                    <div class="col-12">
+                        <h6>Recommended Actions</h6>
+                        <div id="recommendedActions"></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- ANALYTICS DASHBOARD TAB - EXACT STREAMLIT LAYOUT -->
+    <!-- ====================================================================== -->
+    <div class="tab-pane fade" id="analytics-panel" role="tabpanel">
+        <div id="analytics-dashboard">
+            
+            <!-- A) TIME WINDOW + FILTERS - Exact Streamlit Layout -->
+            <h4 class="section-title">A) Time Window + Filters</h4>
+            
+            <div class="row g-3 mb-2">
+                <div class="col-md-2">
+                    <label class="form-label">Window</label>
+                    <select id="windowPreset" class="form-select">
+                        <option value="15min">Last 15 min</option>
+                        <option value="1hr">Last 1 hr</option>
+                        <option value="6hr">Last 6 hr</option>
+                        <option value="24hr">Last 24 hr</option>
+                        <option value="7days">Last 7 days</option>
+                        <option value="1month">Last 1 month</option>
+                        <option value="6months">Last 6 months</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Plant ID</label>
+                    <select class="form-select" id="plantSelect">
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Stage</label>
+                    <select class="form-select" id="stageSelect">
+                        <option value="Stage 1 - Intake">Stage 1 - Intake</option>
+                        <option value="Stage 2 - Pre-treatment">Stage 2 - Pre-treatment</option>
+                        <option value="Stage 3 - Ultrafiltration (UF)">Stage 3 - Ultrafiltration (UF)</option>
+                        <option value="Stage 4 - Dechlorination (UV)">Stage 4 - Dechlorination (UV)</option>
+                        <option value="Stage 5 - Reverse Osmosis (RO)">Stage 5 - Reverse Osmosis (RO)</option>
+                    </select>
+                </div>
+                <div class="col-md-5" id="customDateContainer" style="display: none;">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">From date</label>
+                            <input type="date" class="form-control" id="fromDate">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">To date</label>
+                            <input type="date" class="form-control" id="toDate">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-muted mb-3" id="timeRange">Range: calculating...</p>
+            <div id="analyticsStatus" class="small text-muted mt-1"></div>
+
+            <div class="stage-divider"></div>
+
+            <!-- B) KPI SUMMARY STRIP - Exact Match -->
+            <h4 class="section-title">B) KPI Summary Strip</h4>
+
+            <div class="row mb-3">
+                <div class="col-12">
+                    <label class="form-label">Select signal</label>
+                    <select class="form-select" id="signalSelector">
+                        <!-- Populated by JavaScript based on stage -->
+                    </select>
+                 
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="kpi-summary-card">
+                        <div class="kpi-summary-label">Records</div>
+                        <div class="kpi-summary-value" id="analyticsRecords">—</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-summary-card">
+                        <div class="kpi-summary-label">Avg</div>
+                        <div class="kpi-summary-value" id="analyticsAvg">—</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-summary-card">
+                        <div class="kpi-summary-label">Min</div>
+                        <div class="kpi-summary-value" id="analyticsMin">—</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-summary-card">
+                        <div class="kpi-summary-label">Max</div>
+                        <div class="kpi-summary-value" id="analyticsMax">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-divider"></div>
+
+            <!-- C) TREND EXPLORER - Exact Match -->
+            <h4 class="section-title">C) Trend Explorer</h4>
+            <div class="analytics-chart-card">
+                <div id="trendChart" style="min-height: 380px;"></div>
+            </div>
+
+            <div class="stage-divider"></div>
+
+            <!-- D) DISTRIBUTION & PERCENTILES - Exact Match -->
+            <h4 class="section-title">D) Distribution & Percentiles</h4>
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Signal for histogram/percentiles</label>
+                    <select class="form-select" id="distSignalSelect">
+                        <!-- Populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Histogram bins</label>
+                    <input type="range" class="form-range" id="binsSlider" min="10" max="80" value="30" step="5">
+                    <small class="text-muted">Bins: <span id="binsValue">30</span></small>
+                </div>
+            </div>
+
+            <div class="row g-3 align-items-stretch">
+                <div class="col-md-5">
+                    <div class="analytics-chart-card h-100">
+                        <h6>Percentiles</h6>
+                        <div class="card-body-flex">
+                            <div id="percentileTable"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="analytics-chart-card h-100">
+                        <div class="card-body-flex">
+                            <div id="distributionChart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="stage-divider"></div>
+
+            <!-- E) ROLLING STATISTICS - Exact Match -->
+            <h4 class="section-title">E) Rolling Statistics</h4>
+            
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Signal for rolling stats</label>
+                    <select class="form-select" id="rollSignalSelect">
+                        <!-- Populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Rolling window (samples)</label>
+                    <input type="range" class="form-range" id="rollWindowSlider" min="10" max="500" value="60" step="10">
+                    <small class="text-muted">Window: <span id="rollWindowValue">60</span></small>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Show</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="showRollMean" checked>
+                        <label class="form-check-label" for="showRollMean">Rolling mean</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="showRollStd" checked>
+                        <label class="form-check-label" for="showRollStd">Rolling std (noise)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="showRollSlope">
+                        <label class="form-check-label" for="showRollSlope">Rolling slope (trend)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analytics-chart-card">
+                <div id="rollingChart" style="min-height: 360px;"></div>
+            </div>
+
+            <div class="stage-divider"></div>
+
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- AI CHAT TAB (NEW) -->
+    <!-- ====================================================================== -->
+    <div class="tab-pane fade" id="chat-panel" role="tabpanel">
+        <div id="chat-container">
+            
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <div class="chat-header-title">
+                    <span class="chat-header-icon">🤖</span>
+                    <span>SWAT AI Assistant</span>
+                </div>
+                <div class="chat-status-indicator">
+                    <span class="chat-status-dot" id="chat-status-dot"></span>
+                    <span id="chat-status-text">Connecting...</span>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="chat-header-btn" id="chat-clear-btn">🗑️ Clear</button>
+                </div>
+            </div>
+            
+            <!-- Chat Messages Area -->
+            <div class="chat-messages" id="chat-messages">
+                
+                <!-- Empty State (shown when no messages) -->
+                <div class="chat-empty-state" id="chat-empty-state">
+                    <!-- <div class="chat-empty-state-icon">💬</div> -->
+                    <div class="chat-empty-state-title">Start a Conversation</div>
+                    <p>Ask me anything about your SWAT system:</p>
+                    <div class="chat-empty-state-suggestions">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Typing Indicator (hidden by default) -->
+                <div class="chat-typing-indicator hidden" id="chat-typing-indicator">
+                    <div class="chat-message-avatar">🤖</div>
+                    <div class="chat-typing-dots">
+                        <div class="chat-typing-dot"></div>
+                        <div class="chat-typing-dot"></div>
+                        <div class="chat-typing-dot"></div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Chat Input Area -->
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea 
+                        class="chat-input" 
+                        id="chat-input" 
+                        placeholder="Type your question here... (Shift+Enter for new line)"
+                        rows="1"
+                        maxlength="2000"
+                    ></textarea>
+                    <span class="chat-input-char-count" id="chat-char-count">0/2000</span>
+                </div>
+                <button class="chat-send-btn" id="chat-send-btn">
+                    <span>Send</span>
+                    <span>➤</span>
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="~/js/dashboard.js"></script>
+    <!-- NEW: Chat.js loaded when chat tab is active -->
+    <script src="~/js/chat.js"></script>
+}

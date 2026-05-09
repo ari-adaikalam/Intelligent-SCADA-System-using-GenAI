@@ -1,0 +1,132 @@
+# ============================================================================
+# SWAT AI Chatbot - Python RAG Service Requirements
+# ============================================================================
+# Install with: pip install --break-system-packages -r requirements.txt
+# Python Version: 3.9+
+# Last Updated: 2026-01-26
+
+# ============================================================================
+# CORE DEPENDENCIES
+# ============================================================================
+
+# Ollama Python Client (LLM Interface)
+ollama==0.1.8
+
+# Vector Database
+chromadb==0.4.22
+# Embedding model used by ChromaDB
+sentence-transformers==2.3.1
+
+# Web Framework
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-Limiter==3.5.0  # Rate limiting
+
+# ============================================================================
+# DATABASE CONNECTIVITY
+# ============================================================================
+
+# MS SQL Server connector
+pyodbc==5.0.1
+
+# Connection pooling
+SQLAlchemy==2.0.25  # Optional but recommended for production
+
+# ============================================================================
+# DATA PROCESSING
+# ============================================================================
+
+# Data manipulation
+pandas==2.1.4
+numpy==1.26.3
+
+# JSON handling (built-in json module is usually sufficient, but this adds extras)
+orjson==3.9.12  # Faster JSON parsing
+
+# ============================================================================
+# REPORT GENERATION
+# ============================================================================
+
+# PDF Generation
+reportlab==4.0.9
+pypdf2==3.0.1  # For PDF manipulation
+
+# Excel Generation
+openpyxl==3.1.2
+xlsxwriter==3.1.9  # Alternative Excel library
+
+# ============================================================================
+# ML/AI SUPPORT
+# ============================================================================
+
+# For working with your existing ML models (if needed in RAG)
+scikit-learn==1.4.0
+# Note: TensorFlow/XGBoost already installed in your environment
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+
+# HTTP client for calling ML API
+requests==2.31.0
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# Date/time utilities
+python-dateutil==2.8.2
+
+# Logging enhancements
+colorlog==6.8.0  # Colored console logs
+
+# Configuration parsing
+pyyaml==6.0.1
+
+# ============================================================================
+# DEVELOPMENT & TESTING (Optional - comment out for production)
+# ============================================================================
+
+# Testing framework
+# pytest==7.4.4
+# pytest-asyncio==0.23.3
+
+# Code formatting
+# black==24.1.1
+# flake8==7.0.0
+
+# Type checking
+# mypy==1.8.0
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION
+# ============================================================================
+
+# Caching
+cachetools==5.3.2
+
+# Async support (if needed later)
+# asyncio is built-in, but these enhance it:
+# aiohttp==3.9.1
+# aiofiles==23.2.1
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# 
+# Installation Steps:
+# 1. Activate your venv:
+#    D:\FYP - FINAL\.venv\Scripts\Activate.ps1
+#
+# 2. Upgrade pip:
+#    python -m pip install --upgrade pip
+#
+# 3. Install requirements:
+#    pip install --break-system-packages -r requirements.txt
+#
+# 4. Verify installation:
+#    python -c "import ollama; import chromadb; import flask; print('✅ All imports successful')"
+#
+# Estimated install time: 5-10 minutes
+# Estimated disk space: ~2 GB (including dependencies)
+#
+# ============================================================================
