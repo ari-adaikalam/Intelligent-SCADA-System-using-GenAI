@@ -1,4 +1,5 @@
 # Intelligent SCADA System using GenAI 🏭🤖
+<img width="1536" height="1024" alt="Intelligent SCADA System using GenAI" src="https://github.com/user-attachments/assets/3f3facc6-9a90-43c3-b9a5-aa9e116c17d0" />
 
 ## Overview
 
@@ -70,7 +71,7 @@ The objective of this project is to design an **Intelligent SCADA System** power
 
 ## Overall Architecture
 
-<img width="1254" height="1254" alt="ChatGPT Image May 9, 2026, 02_16_12 PM" src="https://github.com/user-attachments/assets/32e626e4-8153-4452-bc96-b35fcbb7d15b" />
+<img width="1254" height="1254" alt="Overall Architecture" src="https://github.com/user-attachments/assets/32e626e4-8153-4452-bc96-b35fcbb7d15b" />
 
 ---
 
@@ -78,7 +79,7 @@ The objective of this project is to design an **Intelligent SCADA System** power
 
 ### The ML pipeline follows a hierarchical 3-stage classification approach:
 
-<img width="1536" height="1024" alt="ChatGPT Image May 9, 2026, 03_30_58 PM" src="https://github.com/user-attachments/assets/f16dc3ca-ab5b-4a08-850a-5a3303f4046c" />
+<img width="1536" height="1024" alt="ML Architecture" src="https://github.com/user-attachments/assets/f16dc3ca-ab5b-4a08-850a-5a3303f4046c" />
 
 ###  ML Models & Justification of their selection 
 
@@ -97,9 +98,9 @@ The objective of this project is to design an **Intelligent SCADA System** power
 
 ---
 
-## GenAI Architecture
+## GenAI ChatBot Architecture
 
-<img width="1536" height="1024" alt="ChatGPT Image May 9, 2026, 03_31_38 PM" src="https://github.com/user-attachments/assets/bbd47883-da46-47de-a608-01222842d83b" />
+<img width="1536" height="1024" alt="GenAI ChatBot Architecture" src="https://github.com/user-attachments/assets/bbd47883-da46-47de-a608-01222842d83b" />
 
 ## RAG Pipeline
 
