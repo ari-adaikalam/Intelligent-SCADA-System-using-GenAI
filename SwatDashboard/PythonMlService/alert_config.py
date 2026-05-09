@@ -24,7 +24,7 @@ EMAIL_CONFIG = {
 
     # Who receives alerts
     'recipient_emails': [
-        'ariadaikalam1234@gmail.com',
+        '',
     ]
 }
 
@@ -60,7 +60,7 @@ CALL_CONFIG = {
 
     # Who receives calls (emergency contact only)
     'recipient_phones': [
-        '+916382043877',  # CHANGE THIS
+        '',  # CHANGE THIS
     ],
 
     # Only call if confidence is this high
