@@ -1,5 +1,5 @@
 # Intelligent SCADA System using GenAI 🏭🤖
-<img width="1536" height="1024" alt="Intelligent SCADA System using GenAI" src="https://github.com/user-attachments/assets/3f3facc6-9a90-43c3-b9a5-aa9e116c17d0" />
+<img width="1536" height="1024" alt="Intelligent SCADA System using GenAI" src="https://github.com/user-attachments/assets/6f6fd58f-c295-4871-8e49-dd50b68d24c5" />
 
 ## Overview
 
