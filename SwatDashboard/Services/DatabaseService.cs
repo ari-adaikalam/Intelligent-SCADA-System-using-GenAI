@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Dapper;
 using SwatDashboard.Models;
 using System.Text.Json;
@@ -12,8 +12,14 @@ namespace SwatDashboard.Services
 
         public DatabaseService(IConfiguration configuration, ILogger<DatabaseService> logger)
         {
-            _connectionString = configuration.GetConnectionString("SwatDatabase") 
-                ?? throw new InvalidOperationException("Database connection string not found");
+            var connectionString = configuration.GetConnectionString("SwatDatabase");
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "Database connection string not found. Set the ConnectionStrings__SwatDatabase " +
+                    "environment variable (see appsettings.Example.json).");
+            }
+            _connectionString = connectionString;
             _logger = logger;
         }
 
@@ -21,15 +27,16 @@ namespace SwatDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                using var connection = new NpgsqlConnection(_connectionString);
                 var sql = @"
-                    SELECT TOP 1
+                    SELECT
                         id AS Id,
                         ts AS Ts,
                         plant_id AS PlantId,
                         payload_json AS PayloadJson
                     FROM dbo.raw_plant_data
-                    ORDER BY id DESC";
+                    ORDER BY id DESC
+                    LIMIT 1";
 
                 return await connection.QueryFirstOrDefaultAsync<RawPlantData>(sql);
             }
@@ -44,15 +51,16 @@ namespace SwatDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                using var connection = new NpgsqlConnection(_connectionString);
                 var sql = $@"
-                    SELECT TOP {n}
+                    SELECT
                         id AS Id,
                         ts AS Ts,
                         plant_id AS PlantId,
                         payload_json AS PayloadJson
                     FROM dbo.raw_plant_data
-                    ORDER BY id DESC";
+                    ORDER BY id DESC
+                    LIMIT {n}";
 
                 var results = await connection.QueryAsync<RawPlantData>(sql);
                 return results.OrderBy(r => r.Id).ToList();
@@ -68,15 +76,20 @@ namespace SwatDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                using var connection = new NpgsqlConnection(_connectionString);
                 
                 string sql;
                 object parameters;
 
+                // Backstop only — high enough that no real date-range query the
+                // dashboard makes will ever hit it, it just stops a crafted
+                // multi-decade range from forcing an unbounded full-table pull.
+                const int maxRows = 2_000_000;
+
                 if (!string.IsNullOrEmpty(plantId) && plantId != "All")
                 {
                     sql = @"
-                        SELECT 
+                        SELECT
                             id AS Id,
                             ts AS Ts,
                             plant_id AS PlantId,
@@ -84,21 +97,23 @@ namespace SwatDashboard.Services
                         FROM dbo.raw_plant_data
                         WHERE ts >= @StartTime AND ts <= @EndTime
                           AND plant_id = @PlantId
-                        ORDER BY ts ASC";
-                    parameters = new { StartTime = startTime, EndTime = endTime, PlantId = plantId };
+                        ORDER BY ts ASC
+                        LIMIT @MaxRows";
+                    parameters = new { StartTime = startTime, EndTime = endTime, PlantId = plantId, MaxRows = maxRows };
                 }
                 else
                 {
                     sql = @"
-                        SELECT 
+                        SELECT
                             id AS Id,
                             ts AS Ts,
                             plant_id AS PlantId,
                             payload_json AS PayloadJson
                         FROM dbo.raw_plant_data
                         WHERE ts >= @StartTime AND ts <= @EndTime
-                        ORDER BY ts ASC";
-                    parameters = new { StartTime = startTime, EndTime = endTime };
+                        ORDER BY ts ASC
+                        LIMIT @MaxRows";
+                    parameters = new { StartTime = startTime, EndTime = endTime, MaxRows = maxRows };
                 }
 
                 var results = await connection.QueryAsync<RawPlantData>(sql, parameters);
@@ -115,7 +130,7 @@ namespace SwatDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                using var connection = new NpgsqlConnection(_connectionString);
                 
                 string sql;
                 object parameters;
@@ -151,7 +166,7 @@ namespace SwatDashboard.Services
         {
             try
             {
-                using var connection = new SqlConnection(_connectionString);
+                using var connection = new NpgsqlConnection(_connectionString);
                 var sql = "SELECT DISTINCT plant_id FROM dbo.raw_plant_data WHERE plant_id IS NOT NULL ORDER BY plant_id";
                 var results = await connection.QueryAsync<string>(sql);
                 return results.ToList();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -20,6 +20,7 @@ namespace SwatDashboard.Services
         private readonly ILogger<LiveDataBackgroundService> _logger;
         private readonly int _refreshIntervalMs;
         private readonly int _offlineThresholdSeconds;
+        private readonly string _mlApiUrl;  // ← ADDED: was missing, caused CS0103
 
         private int? _lastSeenDbId;
         private MlInferenceResult? _lastMlResult;
@@ -49,13 +50,15 @@ namespace SwatDashboard.Services
             _logger = logger;
             _refreshIntervalMs = configuration.GetValue<int>("SwatSettings:RefreshIntervalMs", 1000);
             _offlineThresholdSeconds = configuration.GetValue<int>("SwatSettings:OfflineThresholdSeconds", 5);
+            _mlApiUrl = configuration["SwatSettings:PythonMlApiUrl"]
+                        ?? "https://ariadaikalam-swat-ml-api.hf.space";
         }
 
         private async Task ResetMlBufferAsync(CancellationToken ct)
         {
             try
             {
-                using var req = new HttpRequestMessage(HttpMethod.Post, "http://127.0.0.1:5000/api/buffer/reset");
+                using var req = new HttpRequestMessage(HttpMethod.Post, $"{_mlApiUrl}/api/buffer/reset");
                 using var resp = await _http.SendAsync(req, ct);
 
                 if (resp.IsSuccessStatusCode)
@@ -76,7 +79,7 @@ namespace SwatDashboard.Services
                 _refreshIntervalMs
             );
 
-            // ✅ Initialize cache ONCE at startup
+            // Initialize cache ONCE at startup
             await WarmRecentCacheOnce(stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
@@ -100,7 +103,7 @@ namespace SwatDashboard.Services
                         var freshnessSeconds = (int)(DateTime.Now - latestData.Ts).TotalSeconds;
                         var isOnline = freshnessSeconds <= _offlineThresholdSeconds;
 
-                        // ✅ OFFLINE -> ONLINE transition: reset ML buffer once
+                        // OFFLINE -> ONLINE transition: reset ML buffer once
                         if (!_wasOnline && isOnline)
                         {
                             _logger.LogInformation("🔄 OFFLINE → ONLINE detected. Resetting ML buffer...");
@@ -159,8 +162,7 @@ namespace SwatDashboard.Services
                             recentSnapshot = _recentCache.ToList();
                         }
 
-
-                        // 7) Send update
+                        // 6) Send update
                         var dashboardData = new LiveDashboardData
                         {
                             LatestData = latestData,
@@ -176,8 +178,6 @@ namespace SwatDashboard.Services
                 {
                     _logger.LogError(ex, "Error in Live Data Background Service loop");
                 }
-
-               
 
                 // Keep loop close to refresh interval
                 var loopElapsedMs = (DateTime.UtcNow - loopStartUtc).TotalMilliseconds;

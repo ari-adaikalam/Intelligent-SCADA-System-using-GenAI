@@ -23,7 +23,7 @@ namespace SwatDashboard.Services
         {
             _httpClientFactory = httpClientFactory;
             _logger = logger;
-            _mlApiUrl = configuration["SwatSettings:PythonMlApiUrl"] ?? "http://127.0.0.1:5000";
+            _mlApiUrl = configuration["SwatSettings:PythonMlApiUrl"] ?? "https://ariadaikalam-swat-ml-api.hf.space";
         }
 
         public async Task<MlInferenceResult?> RunInferenceAsync(RawPlantData data)

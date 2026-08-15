@@ -33,7 +33,7 @@ namespace SwatDashboard.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting data range");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "An error occurred processing your request." });
             }
         }
 
@@ -51,7 +51,7 @@ namespace SwatDashboard.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting data count");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "An error occurred processing your request." });
             }
         }
     }

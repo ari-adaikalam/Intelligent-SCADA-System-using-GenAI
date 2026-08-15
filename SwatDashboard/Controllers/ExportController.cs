@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SwatDashboard.Models;
 using SwatDashboard.Services;
 
@@ -6,6 +7,7 @@ namespace SwatDashboard.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting("export")]
     public class ExportController : ControllerBase
     {
         private readonly DatabaseService _databaseService;
@@ -40,7 +42,7 @@ namespace SwatDashboard.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error exporting to Excel");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "An error occurred processing your request." });
             }
         }
 
@@ -62,7 +64,7 @@ namespace SwatDashboard.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error exporting to CSV");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "An error occurred processing your request." });
             }
         }
 
@@ -84,7 +86,7 @@ namespace SwatDashboard.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error exporting to PDF");
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { error = "An error occurred processing your request." });
             }
         }
     }

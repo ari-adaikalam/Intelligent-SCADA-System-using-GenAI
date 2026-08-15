@@ -10,13 +10,13 @@
 # ============================================================================
 
 # Ollama Python Client (LLM Interface)
-groq
-google-generativeai>=0.8.0
+ollama==0.1.8
+
 # Vector Database
 chromadb==0.4.22
 # Embedding model used by ChromaDB
 sentence-transformers==2.3.1
-matplotlib==3.8.4
+
 # Web Framework
 Flask==3.0.0
 Flask-CORS==4.0.0
@@ -32,13 +32,10 @@ pyodbc==5.0.1
 # Connection pooling
 SQLAlchemy==2.0.25  # Optional but recommended for production
 
-# SQL parsing for strict query validation (structural allowlist, not regex)
-sqlglot==25.1.0
-
 # ============================================================================
 # DATA PROCESSING
 # ============================================================================
-psycopg2-binary
+
 # Data manipulation
 pandas==2.1.4
 numpy==1.26.3
@@ -118,7 +115,7 @@ cachetools==5.3.2
 # 
 # Installation Steps:
 # 1. Activate your venv:
-#    D:\FYP - FINAL\.venv\Scripts\Activate.ps1
+#    D:\FYP - FINAL\venv\Scripts\Activate.ps1
 #
 # 2. Upgrade pip:
 #    python -m pip install --upgrade pip
