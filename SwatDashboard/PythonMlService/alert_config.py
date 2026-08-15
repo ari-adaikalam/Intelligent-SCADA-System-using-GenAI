@@ -1,11 +1,23 @@
 """
 Alert System Configuration
 ==========================
-Store all alert settings and credentials here.
+Store all alert settings here. Credentials are read from environment
+variables — this file is safe to commit.
 
-SECURITY: Never commit this file to Git!
-Add to .gitignore: alert_config.py
+Required environment variables (set these in your deployment environment,
+never in this file):
+  ALERT_SENDER_EMAIL, ALERT_SENDER_APP_PASSWORD, ALERT_RECIPIENT_EMAILS (comma-separated)
+  TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+  ALERT_RECIPIENT_PHONES (comma-separated)
 """
+
+import os
+
+
+def _split_env_list(name: str) -> list:
+    raw = os.environ.get(name, "")
+    return [v.strip() for v in raw.split(",") if v.strip()]
+
 
 # ============================================================================
 # EMAIL CONFIGURATION (Gmail)
@@ -18,14 +30,12 @@ EMAIL_CONFIG = {
     'smtp_server': 'smtp.gmail.com',
     'smtp_port': 587,
 
-    # Your Gmail account
-    'sender_email': '',  # CHANGE THIS
-    'sender_password': '',  # CHANGE THIS (16-char app password)
+    # Your Gmail account — set via environment variables
+    'sender_email': os.environ.get('ALERT_SENDER_EMAIL', ''),
+    'sender_password': os.environ.get('ALERT_SENDER_APP_PASSWORD', ''),
 
     # Who receives alerts
-    'recipient_emails': [
-        '',
-    ]
+    'recipient_emails': _split_env_list('ALERT_RECIPIENT_EMAILS'),
 }
 
 # ============================================================================
@@ -35,15 +45,13 @@ EMAIL_CONFIG = {
 SMS_CONFIG = {
     'enabled': False,  # Set to False to disable SMS alerts
 
-    # Twilio credentials (from https://console.twilio.com)
-    'twilio_account_sid': '',  # CHANGE THIS
-    'twilio_auth_token': '',  # CHANGE THIS
-    'twilio_phone_number': '',  # CHANGE THIS
+    # Twilio credentials (from https://console.twilio.com) — set via environment variables
+    'twilio_account_sid': os.environ.get('TWILIO_ACCOUNT_SID', ''),
+    'twilio_auth_token': os.environ.get('TWILIO_AUTH_TOKEN', ''),
+    'twilio_phone_number': os.environ.get('TWILIO_PHONE_NUMBER', ''),
 
     # Who receives SMS (must be verified on free tier)
-    'recipient_phones': [
-        '',  # CHANGE THIS
-    ]
+    'recipient_phones': _split_env_list('ALERT_RECIPIENT_PHONES'),
 }
 
 # ============================================================================
@@ -59,9 +67,7 @@ CALL_CONFIG = {
     'twilio_phone_number': SMS_CONFIG['twilio_phone_number'],
 
     # Who receives calls (emergency contact only)
-    'recipient_phones': [
-        '',  # CHANGE THIS
-    ],
+    'recipient_phones': _split_env_list('ALERT_CALL_RECIPIENT_PHONES') or _split_env_list('ALERT_RECIPIENT_PHONES'),
 
     # Only call if confidence is this high
     'confidence_threshold': 0.90  # 90%

@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "SWaT Dashboard";
+    ViewData["Title"] = "Live Monitoring";
     Layout = "_Layout";
 }
 
@@ -12,6 +12,83 @@
         Intelligent SCADA System Using GENAI
     </div>
 </div>
+
+<!-- ── WAKE-UP SPLASH SCREEN ── -->
+<div id="splashScreen" style="
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    transition: opacity 0.8s ease;">
+
+    <!-- Logo / Title -->
+    <div style="text-align:center; margin-bottom: 40px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🏭</div>
+        <h1 style="color: #e0e0e0; font-size: 28px; font-weight: 300; margin: 0;">
+            Sewage Water Treatment Plant
+        </h1>
+        <p style="color: #7f8c8d; font-size: 14px; margin-top: 8px;">
+            Intelligent SCADA System — Starting up services...
+        </p>
+    </div>
+
+    <!-- Service status list -->
+    <div id="serviceList" style="
+        background: rgba(255,255,255,0.05);
+        border-radius: 12px; padding: 24px 32px;
+        min-width: 320px; margin-bottom: 32px;">
+        
+        <div class="svc-row" id="svc-ml">
+            <span class="svc-icon">⏳</span>
+            <span class="svc-name">ML API</span>
+            <span class="svc-status">Waking up...</span>
+        </div>
+        <div class="svc-row" id="svc-ingest">
+            <span class="svc-icon">⏳</span>
+            <span class="svc-name">Ingest Service</span>
+            <span class="svc-status">Waking up...</span>
+        </div>
+        <div class="svc-row" id="svc-sender">
+            <span class="svc-icon">⏳</span>
+            <span class="svc-name">Plant Sender</span>
+            <span class="svc-status">Waking up...</span>
+        </div>
+        <div class="svc-row" id="svc-rag">
+            <span class="svc-icon">⏳</span>
+            <span class="svc-name">RAG / Chat API</span>
+            <span class="svc-status">Waking up...</span>
+        </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="width: 320px; background: rgba(255,255,255,0.1); border-radius: 99px; height: 6px;">
+        <div id="splashProgress" style="
+            width: 0%; height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            border-radius: 99px;
+            transition: width 0.5s ease;"></div>
+    </div>
+    <p id="splashMsg" style="color: #7f8c8d; font-size: 13px; margin-top: 12px;">
+        Initializing...
+    </p>
+</div>
+
+<style>
+.svc-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: #bdc3c7; font-size: 14px;
+}
+.svc-row:last-child { border-bottom: none; }
+.svc-icon { font-size: 18px; width: 24px; text-align: center; }
+.svc-name { flex: 1; }
+.svc-status { font-size: 12px; color: #7f8c8d; }
+.svc-ok .svc-icon::before { content: '✅'; }
+.svc-ok .svc-status { color: #2ecc71; }
+.svc-fail .svc-icon::before { content: '❌'; }
+.svc-fail .svc-status { color: #e74c3c; }
+</style>
 
 <!-- Tab Navigation -->
 <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
@@ -58,7 +135,7 @@
                     <div class="swat-value-small" id="lastUpdate">—</div>
                 </div>
                 <div class="swat-card">
-                    <div class="swat-label">Connection</div>
+                    <div class="swat-label">Connection (5 secs)</div>
                     <div class="swat-value" id="connection">—</div>
                 </div>
             </div>

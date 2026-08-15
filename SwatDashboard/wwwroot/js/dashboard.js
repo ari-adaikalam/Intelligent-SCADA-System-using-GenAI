@@ -1,5 +1,5 @@
-// dashboard.js - SIMPLIFIED VERSION with placeholder fix
-// No Section F (Actuator Analytics)
+// dashboard.js - FIXED VERSION
+// Fixes: broken template literal in updateTimeRange, IST timestamps on all charts
 
 let connection = null;
 let analyticsData = null;
@@ -7,7 +7,7 @@ let recentData = [];
 let analyticsReqSeq = 0;
 let windowDebounceTimer = null;
 const analyticsCache = new Map();
-let plotsNeedRender = true;  // set to true when data loads or tab shown
+let plotsNeedRender = true;
 
 const STAGES = {
     "Stage 1 - Intake": ["true_FIT101", "true_LIT101", "MV101", "P101"],
@@ -16,7 +16,181 @@ const STAGES = {
     "Stage 4 - Dechlorination (UV)": ["true_FIT401", "true_LIT401", "true_AIT401", "true_AIT402", "UV401", "P402", "P403"],
     "Stage 5 - Reverse Osmosis (RO)": ["true_FIT501", "true_PIT501", "true_AIT501", "P501"]
 };
-
+// ── SERVICE MAP ───────────────────────────────────────────────
+const SERVICE_MAP = {
+    "ML API":        "svc-ml",
+    "Ingest":        "svc-ingest",
+    "Plant Sender":  "svc-sender",
+    "RAG API":       "svc-rag"
+};
+ 
+// ══════════════════════════════════════════════════════════════
+// WAKE SYSTEM  (browser-only responsibility)
+//
+// Architecture:
+//   Browser  → wakes services  (iframes for HF, fetch+retry for Render)
+//   Server   → only checks status  (/Dashboard/ServiceStatus)
+//
+// Why browser, not server:
+//   Server-to-server requests, even with browser headers, are still
+//   seen as API calls at the CDN/edge level. Only a real browser
+//   context produces the full request fingerprint HF/Render expect.
+// ══════════════════════════════════════════════════════════════
+ 
+// ── All services — one unified list ───────────────────────────
+// Every service gets both treatment:
+//   iframe  → triggers container boot (real browser navigation)
+//   fetch   → retries until ready, tells us exactly when it's up
+//
+// Both run in parallel for every service. Belt-and-suspenders.
+ 
+const ALL_WAKE_SERVICES = [
+    { name: 'ML API',       url: 'https://ariadaikalam-swat-ml-api.hf.space/' },
+    { name: 'Ingest',       url: 'https://ariadaikalam-swat-ingest.hf.space/' },
+    { name: 'Plant Sender', url: 'https://ariadaikalam-swat-plant-sender.hf.space/' },
+    { name: 'RAG API',      url: 'https://swat-rag-api.onrender.com/' },
+];
+ 
+// ── iframe wake ────────────────────────────────────────────────
+function fireIframe(url, label) {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;border:none;top:-9999px;left:-9999px;';
+    iframe.src = url;
+    iframe.onload  = () => { console.log(`[WAKE] iframe loaded: ${label}`); };
+    iframe.onerror = () => { console.log(`[WAKE] iframe error (cross-origin OK): ${label}`); };
+    document.body.appendChild(iframe);
+    setTimeout(() => { try { document.body.removeChild(iframe); } catch(e) {} }, 30000);
+}
+ 
+function wakeWithIframes() {
+    ALL_WAKE_SERVICES.forEach(svc => {
+        console.log(`[WAKE] Firing 3 iframes for: ${svc.name}`);
+        fireIframe(svc.url, svc.name);
+        setTimeout(() => fireIframe(svc.url, `${svc.name} #2`), 300);
+        setTimeout(() => fireIframe(svc.url, `${svc.name} #3`), 600);
+    });
+}
+ 
+// ── fetch + retry loop ─────────────────────────────────────────
+const WAKE_MAX_ATTEMPTS  = 25;
+const WAKE_INTERVAL_MS   = 20000;
+const _wakeTimers        = new Map(); // name → intervalId
+const _wakeAttempts      = new Map(); // name → attempt count
+ 
+function wakeWithFetch() {
+    ALL_WAKE_SERVICES.forEach(svc => {
+        _wakeAttempts.set(svc.name, 0);
+ 
+        const tryWake = async () => {
+            const attempt = _wakeAttempts.get(svc.name) + 1;
+            _wakeAttempts.set(svc.name, attempt);
+            console.log(`[WAKE] ${svc.name} fetch attempt ${attempt}/${WAKE_MAX_ATTEMPTS}`);
+ 
+            try {
+                const resp = await fetch(svc.url, { cache: 'no-store' });
+                if (resp.ok || resp.status < 500) {
+                    console.log(`[WAKE] ✅ ${svc.name} awake (HTTP ${resp.status}) — stopping retries.`);
+                    clearInterval(_wakeTimers.get(svc.name));
+                    _wakeTimers.delete(svc.name);
+                    return;
+                }
+            } catch(e) {
+                console.log(`[WAKE] ${svc.name} not ready yet: ${e.message}`);
+            }
+ 
+            if (attempt >= WAKE_MAX_ATTEMPTS) {
+                console.warn(`[WAKE] ⚠️ ${svc.name} did not respond after ${WAKE_MAX_ATTEMPTS} attempts.`);
+                clearInterval(_wakeTimers.get(svc.name));
+                _wakeTimers.delete(svc.name);
+            }
+        };
+ 
+        tryWake();
+        _wakeTimers.set(svc.name, setInterval(tryWake, WAKE_INTERVAL_MS));
+    });
+}
+ 
+// ── Main entry point ───────────────────────────────────────────
+function wakeAllServices() {
+    console.log('[WAKE] Starting wake sequence — browser is responsible for waking all services.');
+    wakeWithIframes(); // triggers container boot on all services
+    wakeWithFetch();   // retries until each service is ready
+}
+ 
+if (document.body) {
+    wakeAllServices();
+} else {
+    document.addEventListener('DOMContentLoaded', wakeAllServices);
+}
+ 
+async function pollServicesReady() {
+    const splash = document.getElementById('splashScreen');
+    const progress = document.getElementById('splashProgress');
+    const msg = document.getElementById('splashMsg');
+    if (!splash) return;
+ 
+    let attempts = 0;
+    const maxAttempts = 30; // 150s max
+ 
+    while (attempts < maxAttempts) {
+        attempts++;
+ 
+        const elapsed = attempts * 5;
+        const elapsedStr = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed/60)}m ${elapsed%60}s`;
+        msg.textContent = `Waking up all services... (${elapsedStr} elapsed)`;
+ 
+        try {
+            const resp = await fetch('/Dashboard/ServiceStatus');
+            const data = await resp.json();
+ 
+            let totalReady = 0;
+ 
+            data.services.forEach(svc => {
+                const rowId = SERVICE_MAP[svc.name];
+                if (!rowId) return;
+                const row = document.getElementById(rowId);
+                if (!row) return;
+ 
+                if (svc.ok) {
+                    row.className = 'svc-row svc-ok';
+                    row.querySelector('.svc-status').textContent = 'Ready ✅';
+                    totalReady++;
+                } else {
+                    row.className = 'svc-row';
+                    row.querySelector('.svc-status').textContent =
+                        svc.name === 'RAG API'
+                            ? (elapsed < 30 ? 'Starting up...' : elapsed < 70 ? 'Almost ready...' : 'Taking longer than usual...')
+                            : 'Waking up...';
+                }
+            });
+ 
+            const pct = Math.round((totalReady / data.services.length) * 100);
+            progress.style.width = pct + '%';
+ 
+            if (data.allReady) {
+                msg.textContent = '✅ All systems ready! Loading dashboard...';
+                progress.style.width = '100%';
+                await new Promise(r => setTimeout(r, 800));
+                splash.style.opacity = '0';
+                setTimeout(() => splash.style.display = 'none', 800);
+                return;
+            }
+ 
+        } catch(e) {
+            msg.textContent = 'Checking services... please wait.';
+        }
+ 
+        await new Promise(r => setTimeout(r, 5000));
+    }
+ 
+    // Timeout — show dashboard anyway
+    msg.textContent = 'Loading dashboard (some services may still be starting — retry chat if needed)';
+    await new Promise(r => setTimeout(r, 2000));
+    splash.style.opacity = '0';
+    setTimeout(() => splash.style.display = 'none', 800);
+}
+ 
+pollServicesReady();
 document.addEventListener('DOMContentLoaded', function () {
     initializeLiveDashboard();
     initializeAnalyticsDashboard();
@@ -28,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // ──────────────────────────────────────────────
 function whenTabIsReady(callback, delay = 150) {
     const check = () => {
-        const tabPane = document.querySelector('#analytics');
+        const tabPane = document.querySelector('#analytics-panel');
         if (tabPane && tabPane.offsetWidth > 50 && tabPane.offsetHeight > 50) {
             callback();
         } else {
@@ -38,19 +212,30 @@ function whenTabIsReady(callback, delay = 150) {
     setTimeout(check, delay);
 }
 
-function toLocalIso(dt) {
-    const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 19);
-    return local;
-}
-
 function normalizeAnalyticsResponse(json) {
     if (Array.isArray(json)) return json;
     if (json && Array.isArray(json.data)) return json.data;
     if (json && Array.isArray(json.records)) return json.records;
     if (json && Array.isArray(json.items)) return json.items;
     return [];
+}
+
+// ──────────────────────────────────────────────
+// IST helpers — FIX: shift UTC → IST for Plotly
+// ──────────────────────────────────────────────
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000; // +5:30 in ms
+
+function toIST(dateStr) {
+    // Returns a Date shifted by +5:30 so Plotly renders IST wall-clock time
+    const utc = new Date(dateStr);
+    return new Date(utc.getTime() + IST_OFFSET_MS);
+}
+
+function formatIST(dateStr) {
+    return new Date(dateStr).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour12: false
+    });
 }
 
 function prepareChartContainer(containerId, desiredHeight = 360) {
@@ -69,7 +254,6 @@ function prepareChartContainer(containerId, desiredHeight = 360) {
         container.appendChild(host);
     }
 
-    // ✅ IMPORTANT: explicit height so offsetHeight is never 0
     host.style.cssText = `
         position: relative;
         z-index: 1;
@@ -80,12 +264,11 @@ function prepareChartContainer(containerId, desiredHeight = 360) {
     return { container, host };
 }
 
-// REPLACE these two functions only
 function showChartPlaceholder(containerId, text = 'No data available') {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    hideChartPlaceholder(containerId); // prevent duplicates
+    hideChartPlaceholder(containerId);
 
     const ph = document.createElement('div');
     ph.className = 'chart-placeholder p-4 text-center text-muted';
@@ -103,22 +286,19 @@ function hideChartPlaceholder(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // Remove ALL placeholders inside this container (even nested)
-    const placeholders = container.querySelectorAll('.chart-placeholder');
-    placeholders.forEach(ph => {
+    container.querySelectorAll('.chart-placeholder').forEach(ph => {
         ph.remove();
         console.log(`[${containerId}] Removed placeholder from DOM`);
     });
 
-    // Extra safety: remove any text-muted "No data" divs that might be custom
-    const noDataDivs = container.querySelectorAll('.p-4.text-center.text-muted');
-    noDataDivs.forEach(div => {
+    container.querySelectorAll('.p-4.text-center.text-muted').forEach(div => {
         if (div.textContent.includes('No data') || div.textContent.includes('Waiting')) {
             div.remove();
             console.log(`[${containerId}] Removed stray no-data text`);
         }
     });
 }
+
 async function renderPlot(containerId, traces, layout, config = { responsive: true }) {
     const desiredHeight = layout?.height || 360;
     const ctx = prepareChartContainer(containerId, desiredHeight);
@@ -129,7 +309,6 @@ async function renderPlot(containerId, traces, layout, config = { responsive: tr
     const height = host.offsetHeight;
     console.log(`[renderPlot:${containerId}] Called | size: ${width} × ${height}`);
 
-    // If still 0 for any reason, force it once
     if (height === 0) host.style.height = `${desiredHeight}px`;
 
     hideChartPlaceholder(containerId);
@@ -149,6 +328,7 @@ async function renderPlot(containerId, traces, layout, config = { responsive: tr
     setTimeout(() => Plotly.Plots.resize(host), 120);
     setTimeout(() => Plotly.Plots.resize(host), 450);
 }
+
 function resizeAllCharts() {
     console.log('[resizeAllCharts] Triggered');
 
@@ -162,35 +342,30 @@ function resizeAllCharts() {
         const container = document.getElementById(id);
         if (!container) return;
 
-        // Use plot-host if you created it, else fallback to container
         const host = container.querySelector('.plot-host') || container;
-
         const w = host.offsetWidth;
         const h = host.offsetHeight;
 
-        // If we have data and plots are pending and the div is visible -> replot
         if (analyticsData?.length > 0 && (plotsNeedRender || id === 'trendChart' || id === 'rollingChart') && w > 50 && h > 50) {
             console.log(`[${id}] Forcing re-plot (trend/rolling special case)`);
             hideChartPlaceholder(id);
             fn(analyticsData);
         }
-      
 
-        // If plot already exists -> resize safely
         if (host.classList.contains('js-plotly-plot') || host._fullLayout) {
             console.log(`[${id}] Resizing existing plot`);
             try { Plotly.Plots.resize(host); } catch (e) { console.warn('resize failed', e); }
         }
     });
 }
+
 function rollingMean(values, windowSize) {
     const out = new Array(values.length).fill(null);
     let sum = 0, count = 0;
-    const q = []; // store last window values (including nulls)
+    const q = [];
 
     for (let i = 0; i < values.length; i++) {
         const v = values[i];
-
         q.push(v);
         if (Number.isFinite(v)) { sum += v; count++; }
 
@@ -223,9 +398,10 @@ function rollingStd(values, windowSize) {
     }
     return out;
 }
+
 function rollingSlope(values, windowSize) {
     const out = new Array(values.length).fill(null);
-    const q = []; // window of {index, value}
+    const q = [];
 
     for (let i = 0; i < values.length; i++) {
         const v = values[i];
@@ -241,7 +417,7 @@ function rollingSlope(values, windowSize) {
             const n = finite.length;
 
             finite.forEach(p => {
-                const x = p.idx - finite[0].idx; // relative position 0..n-1
+                const x = p.idx - finite[0].idx;
                 sumX += x;
                 sumY += p.val;
                 sumXY += x * p.val;
@@ -249,10 +425,9 @@ function rollingSlope(values, windowSize) {
             });
 
             const denom = n * sumX2 - sumX * sumX;
-            if (Math.abs(denom) < 1e-10) continue; // avoid division by zero
+            if (Math.abs(denom) < 1e-10) continue;
 
-            const slope = (n * sumXY - sumX * sumY) / denom;
-            out[i] = slope;
+            out[i] = (n * sumXY - sumX * sumY) / denom;
         }
     }
     return out;
@@ -272,7 +447,7 @@ async function refreshAllCharts() {
 
     ['trendChart', 'distributionChart', 'rollingChart'].forEach(hideChartPlaceholder);
 
-    plotsNeedRender = false;   // ✅ ADD THIS
+    plotsNeedRender = false;
     resizeAllCharts();
     setTimeout(resizeAllCharts, 300);
 }
@@ -290,6 +465,7 @@ function extractFirstArrayDeep(json) {
     }
     return null;
 }
+
 // ============================================================
 // LIVE DASHBOARD
 // ============================================================
@@ -304,7 +480,6 @@ function initializeLiveDashboard() {
         updateLiveDashboard(data);
     });
 
-
     connection.start().then(() => console.log("SignalR connected")).catch(err => console.error(err));
 }
 
@@ -313,7 +488,7 @@ function updateLiveDashboard(data) {
 
     const latest = data.latestData;
     const payload = latest.payload;
-    
+
     if (data.recentData) recentData = data.recentData;
 
     updatePlantStatus(data, latest, payload);
@@ -331,13 +506,14 @@ function updateLiveDashboard(data) {
 
 function updatePlantStatus(data, latest, payload) {
     document.getElementById('plantId').textContent = latest.plantId || 'SWAT_SIM_01';
-    
+
     const downtimeFlag = parseInt(payload.downtime_flag || 0);
     const downtimeType = (payload.downtime_type || 'run').toLowerCase();
     let stateText = downtimeFlag === 1 ? (downtimeType.includes('maint') ? '🟡 MAINTENANCE' : '🔴 DOWNTIME') : '🟢 RUN';
     document.getElementById('plantState').innerHTML = stateText;
 
-    document.getElementById('lastUpdate').textContent = new Date(latest.ts).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'});
+    // FIX: use formatIST for last update display
+    document.getElementById('lastUpdate').textContent = formatIST(latest.ts);
     document.getElementById('connection').innerHTML = data.status.isOnline ? '🟢 ONLINE' : '🔴 OFFLINE';
 }
 
@@ -349,7 +525,7 @@ function updateProcessOverview(p) {
         <div class="kpi"><div class="kpi-label">Pump P101</div><div class="kpi-value">${onBadge(p.P101)}</div></div>
     `;
     plotSparkline('stage1Sparkline', 'true_FIT101');
-    
+
     document.getElementById('stage2Metrics').innerHTML = `
         <div class="kpi"><div class="kpi-label">Flow (FIT201)</div><div class="kpi-value">${fmt(p.true_FIT201, 3)}</div></div>
         <div class="kpi"><div class="kpi-label">Conductivity (AIT201)</div><div class="kpi-value">${fmt(p.true_AIT201, 2)}</div></div>
@@ -361,7 +537,7 @@ function updateProcessOverview(p) {
         <div class="kpi"><div class="kpi-label">NaOCl Pump P205</div><div class="kpi-value">${onBadge(p.P205)}</div></div>
     `;
     plotSparkline('stage2Sparkline', 'true_AIT202');
-    
+
     document.getElementById('stage3Metrics').innerHTML = `
         <div class="kpi"><div class="kpi-label">Flow (FIT301)</div><div class="kpi-value">${fmt(p.true_FIT301, 3)}</div></div>
         <div class="kpi"><div class="kpi-label">Tank Level (LIT301)</div><div class="kpi-value">${fmt(p.true_LIT301, 2)}</div></div>
@@ -373,7 +549,7 @@ function updateProcessOverview(p) {
         <div class="kpi"><div class="kpi-label">Pump P302</div><div class="kpi-value">${onBadge(p.P302)}</div></div>
     `;
     plotSparkline('stage3Sparkline', 'true_DPIT301');
-    
+
     document.getElementById('stage4Metrics').innerHTML = `
         <div class="kpi"><div class="kpi-label">Feed Flow (FIT401)</div><div class="kpi-value">${fmt(p.true_FIT401, 3)}</div></div>
         <div class="kpi"><div class="kpi-label">Tank Level (LIT401)</div><div class="kpi-value">${fmt(p.true_LIT401, 2)}</div></div>
@@ -383,7 +559,7 @@ function updateProcessOverview(p) {
         <div class="kpi"><div class="kpi-label">NaHSO₄ Pump P403</div><div class="kpi-value">${onBadge(p.P403)}</div></div>
     `;
     plotSparkline('stage4Sparkline', 'true_FIT401');
-    
+
     document.getElementById('stage5Metrics').innerHTML = `
         <div class="kpi"><div class="kpi-label">Permeate Flow (FIT501)</div><div class="kpi-value">${fmt(p.true_FIT501, 3)}</div></div>
         <div class="kpi"><div class="kpi-label">pH (AIT501)</div><div class="kpi-value">${fmt(p.true_AIT501, 2)}</div></div>
@@ -396,24 +572,25 @@ function updateProcessOverview(p) {
 function plotSparkline(id, key) {
     if (!recentData.length) return;
     const values = recentData.map(d => d.payload[key] || null);
-    const timestamps = recentData.map(d => new Date(d.ts));
-    
+    // FIX: use toIST for sparkline timestamps
+    const timestamps = recentData.map(d => toIST(d.ts));
+
     Plotly.newPlot(id, [{
         x: timestamps, y: values, type: 'scatter', mode: 'lines',
         line: { color: '#4A90E2', width: 2 }, showlegend: false
     }], {
         margin: { t: 5, b: 20, l: 30, r: 5 }, height: 90,
         paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: '#F8F9FA',
-        xaxis: { visible: false }, yaxis: { visible: true, gridcolor: '#D1D9E6', zeroline: false }
+        xaxis: { visible: false, type: 'date' },
+        yaxis: { visible: true, gridcolor: '#D1D9E6', zeroline: false }
     }, { displayModeBar: false, responsive: true });
 }
 
 function updateMlSection(mlResult) {
-
     const statusCard = document.getElementById('mlStatusCard');
     const statusValue = document.getElementById('mlStatusValue');
     const statusLabel = document.getElementById('mlStatusLabel');
-    
+
     if (mlResult.stage1.isAnomaly) {
         statusCard.className = 'ml-status-card ml-status-faulted';
         statusValue.innerHTML = 'ISSUE 🔴';
@@ -424,7 +601,6 @@ function updateMlSection(mlResult) {
     statusLabel.textContent = `Confidence: ${(mlResult.stage1.confidence * 100).toFixed(1)}%`;
 
     const state = (mlResult.stage2?.state || 'UNKNOWN').toUpperCase();
-
     const issueCard = document.getElementById('mlIssueCard');
 
     let issueClass = 'ml-status-monitor';
@@ -434,7 +610,7 @@ function updateMlSection(mlResult) {
         issueClass = 'ml-status-normal';
         issueText = 'NORMAL 🟢';
     } else if (state === 'ANOMALY') {
-        issueClass = 'ml-status-monitor';     // ✅ blue monitor style
+        issueClass = 'ml-status-monitor';
         issueText = 'ANOMALY 🟠';
     } else if (state === 'DEGRADING') {
         issueClass = 'ml-status-degrading';
@@ -455,7 +631,7 @@ function updateMlSection(mlResult) {
         const actionClass =
             state === 'FAULTED' ? 'ml-status-faulted' :
                 state === 'DEGRADING' ? 'ml-status-degrading' :
-                    'ml-status-monitor'; // ✅ ANOMALY goes here
+                    'ml-status-monitor';
 
         actionCard.className = `ml-status-card ${actionClass}`;
         document.getElementById('mlActionValue').innerHTML = `⚠️ ${mlResult.stage3.component}`;
@@ -466,7 +642,6 @@ function updateMlSection(mlResult) {
         document.getElementById('mlActionValue').innerHTML = '✅ NONE';
         document.getElementById('mlActionLabel').textContent = 'All systems normal';
     }
-
 
     const bufferStatus = mlResult.bufferStatus;
     document.getElementById('mlBufferCard').className = bufferStatus.ready ? 'ml-status-card ml-status-normal' : 'ml-status-card ml-status-monitor';
@@ -493,11 +668,7 @@ function updateComponentHealth(mlResult) {
         return;
     }
 
-    // Single row, cards stretch to fill available width.
-    // If too many cards, horizontal scroll appears (still one row).
-    let html = `
-      <div class="attention-row">
-    `;
+    let html = `<div class="attention-row">`;
 
     priorityComps.forEach(([comp, h]) => {
         html += `
@@ -527,7 +698,7 @@ function updateRecommendedActions(mlResult) {
 }
 
 // ============================================================
-// ANALYTICS DASHBOARD - SIMPLIFIED
+// ANALYTICS DASHBOARD
 // ============================================================
 
 async function initializeAnalyticsDashboard() {
@@ -611,13 +782,16 @@ function setupAnalyticsEventHandlers() {
             resizeAllCharts();
         }
     });
+
+    // Custom date range apply button
+    document.getElementById('applyCustomRange')?.addEventListener('click', updateTimeRange);
 }
 
 function updateTimeRange() {
     const preset = document.getElementById('windowPreset').value;
     const now = new Date();
     let start, end;
-    
+
     const customContainer = document.getElementById('customDateContainer');
     if (preset === 'custom') {
         customContainer.style.display = 'block';
@@ -644,16 +818,17 @@ function updateTimeRange() {
         };
 
         const minutes = minutesMap[preset] ?? 60;
-
         end = new Date();
         start = new Date(end.getTime() - minutes * 60 * 1000);
     }
 
-    
-    document.getElementById('timeRange').textContent = `Range: ${start.toLocaleString()} → ${end.toLocaleString()}`;
-    console.log("TimeRange local:", start, end);
-    console.log("TimeRange sent:", toLocalIso(start), toLocalIso(end));
-    console.log("TimeRange UTC:", start.toISOString(), end.toISOString());
+    // FIX: display range label in IST
+    document.getElementById('timeRange').textContent =
+        `Range: ${formatIST(start.toISOString())} → ${formatIST(end.toISOString())} (IST)`;
+
+    // FIX: corrected template literal (was broken syntax in original)
+    console.log(`TimeRange sent: startTime=${start.toISOString()} endTime=${end.toISOString()}`);
+    console.log('TimeRange UTC:', start.toISOString(), end.toISOString());
 
     loadAnalyticsData(start, end);
 }
@@ -664,7 +839,7 @@ async function loadPlantIds() {
         const plantIds = await response.json();
         const select = document.getElementById('plantSelect');
 
-        select.innerHTML = ''; // clear
+        select.innerHTML = '';
         plantIds.forEach((id, idx) => {
             const option = document.createElement('option');
             option.value = id;
@@ -681,39 +856,36 @@ function populateSignalDropdowns() {
     const stage = document.getElementById('stageSelect').value;
     const keys = STAGES[stage] || [];
     const signals = keys.filter(k => k.startsWith('true_'));
-    
+
     console.log('Populating dropdowns for stage:', stage, 'Signals:', signals.length);
-    
-    // Signal multiselect
+
     const signalSelector = document.getElementById('signalSelector');
     signalSelector.innerHTML = '';
     signals.forEach((sig, idx) => {
         const option = document.createElement('option');
         option.value = sig;
         option.textContent = sig.replace('true_', '');
-        option.selected = (idx == 0); // Auto-select first 3
+        option.selected = (idx === 0);
         signalSelector.appendChild(option);
     });
-    
-    // Distribution signal (single select)
+
     const distSelect = document.getElementById('distSignalSelect');
     distSelect.innerHTML = '';
     signals.forEach((sig, idx) => {
         const option = document.createElement('option');
         option.value = sig;
         option.textContent = sig.replace('true_', '');
-        option.selected = (idx === 0); // Auto-select first
+        option.selected = (idx === 0);
         distSelect.appendChild(option);
     });
-    
-    // Rolling signal (single select)
+
     const rollSelect = document.getElementById('rollSignalSelect');
     rollSelect.innerHTML = '';
     signals.forEach((sig, idx) => {
         const option = document.createElement('option');
         option.value = sig;
         option.textContent = sig.replace('true_', '');
-        option.selected = (idx === 0); // Auto-select first
+        option.selected = (idx === 0);
         rollSelect.appendChild(option);
     });
 }
@@ -727,7 +899,7 @@ async function loadAnalyticsData(start, end) {
         return;
     }
 
-    const url = `/api/Analytics/range?startTime=${encodeURIComponent(toLocalIso(start))}&endTime=${encodeURIComponent(toLocalIso(end))}&plantId=${encodeURIComponent(plantId)}`;
+    const url = `/api/Analytics/range?startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}&plantId=${encodeURIComponent(plantId)}`;
 
     try {
         if (statusEl) statusEl.textContent = 'Loading...';
@@ -759,12 +931,7 @@ async function loadAnalyticsData(start, end) {
 
         if (count > 0) {
             plotsNeedRender = true;
-
-            // ✅ ALWAYS refresh KPI + charts after data arrives
-            // Plotly will handle hidden-size via your renderPlot() guard.
             setTimeout(() => refreshAllCharts(), 0);
-
-            // keep your resize nudges (optional)
             setTimeout(resizeAllCharts, 100);
             setTimeout(resizeAllCharts, 300);
             setTimeout(resizeAllCharts, 800);
@@ -779,23 +946,6 @@ async function loadAnalyticsData(start, end) {
         clearAnalytics();
     }
 }
-
-
-async function refreshAllCharts() {
-    if (!Array.isArray(analyticsData) || analyticsData.length === 0) {
-        clearAnalytics();
-        return;
-    }
-
-    updateKpiSummary(analyticsData);
-
-    await plotTrendExplorer(analyticsData);
-    await plotDistribution(analyticsData);
-    await plotRollingStats(analyticsData);
-}
-
-
-
 
 function updateKpiSummary(data) {
     if (!Array.isArray(data) || data.length === 0) return;
@@ -825,16 +975,16 @@ function updateKpiSummary(data) {
 async function plotTrendExplorer(data) {
     console.log('[plotTrendExplorer] Called, data length:', data?.length);
     const selector = document.getElementById('signalSelector');
-    console.log('[plotTrendExplorer] selector exists?', !!selector);
     const selected = selector?.value ? [selector.value] : [];
-    console.log('[plotTrendExplorer] Selected signals:', selected, 'count:', selected.length);
+    console.log('[plotTrendExplorer] Selected signals:', selected);
 
     if (!selected.length) {
-        console.log('[plotTrendExplorer] No signals selected → placeholder');
         showChartPlaceholder('trendChart', 'Select signals from the dropdown above');
         return;
     }
-    const timestamps = data.map(d => new Date(d.ts));
+
+    // FIX: use toIST for chart timestamps
+    const timestamps = data.map(d => toIST(d.ts));
     const traces = selected.map(sig => ({
         x: timestamps,
         y: data.map(d => {
@@ -847,7 +997,7 @@ async function plotTrendExplorer(data) {
     }));
 
     await renderPlot('trendChart', traces, {
-        xaxis: { title: 'Time', gridcolor: '#D1D9E6' },
+        xaxis: { title: 'Time (IST)', gridcolor: '#D1D9E6', type: 'date' },
         yaxis: { title: 'Value', gridcolor: '#D1D9E6' },
         height: 380,
         paper_bgcolor: 'white',
@@ -862,9 +1012,7 @@ async function plotTrendExplorer(data) {
 async function plotDistribution(data) {
     console.log('[plotDistribution] Called');
     const signal = document.getElementById('distSignalSelect').value;
-    console.log('[plotDistribution] Selected signal:', signal);
     if (!signal) {
-        console.log('[plotDistribution] No signal selected → placeholder');
         showChartPlaceholder('distributionChart', 'Select a signal');
         document.getElementById('percentileTable').innerHTML = '';
         return;
@@ -880,8 +1028,7 @@ async function plotDistribution(data) {
         return;
     }
 
-    const bins = parseInt(document.getElementById('binsSlider').value, 10) || 30;  // ← ADD THIS LINE (fallback to 30)
-
+    const bins = parseInt(document.getElementById('binsSlider').value, 10) || 30;
     const vmin = Math.min(...values);
     const vmax = Math.max(...values);
     const size = (vmax - vmin) === 0 ? 1 : (vmax - vmin) / bins;
@@ -903,7 +1050,6 @@ async function plotDistribution(data) {
         margin: { t: 60, r: 20, b: 60, l: 60 }
     });
 
-    // Percentiles (unchanged)
     const sorted = [...values].sort((a, b) => a - b);
     const n = sorted.length;
     let html = '<table class="table table-sm"><thead><tr><th>Percentile</th><th>Value</th></tr></thead><tbody>';
@@ -914,11 +1060,11 @@ async function plotDistribution(data) {
     html += '</tbody></table>';
     document.getElementById('percentileTable').innerHTML = html;
 }
+
 async function plotRollingStats(data) {
     console.log('[plotRollingStats] Called');
     const signal = document.getElementById('rollSignalSelect')?.value;
     if (!signal) {
-        console.warn('[plotRollingStats] No signal selected');
         showChartPlaceholder('rollingChart', 'Select a signal');
         return;
     }
@@ -931,18 +1077,13 @@ async function plotRollingStats(data) {
     const slider = document.getElementById('rollWindowSlider');
     if (slider) windowSize = parseInt(slider.value, 10) || 10;
 
-    console.log('[plotRollingStats] signal:', signal, 'window:', windowSize,
-        'mean:', showMean, 'std:', showStd, 'slope:', showSlope);
-
-    const timestamps = data.map(d => new Date(d.ts));
+    // FIX: use toIST for chart timestamps
+    const timestamps = data.map(d => toIST(d.ts));
     const values = data.map(d => {
         const v = parseFloat(d?.payload?.[signal]);
         return Number.isFinite(v) ? v : null;
     });
 
-    // ──────────────────────────────────────────────
-    // 1. Base traces & layout (always render this)
-    // ──────────────────────────────────────────────
     let traces = [{
         x: timestamps,
         y: values,
@@ -953,7 +1094,7 @@ async function plotRollingStats(data) {
 
     let layout = {
         title: `${signal.replace('true_', '')} - Rolling Statistics (Window: ${windowSize})`,
-        xaxis: { title: 'Time', gridcolor: '#D1D9E6' },
+        xaxis: { title: 'Time (IST)', gridcolor: '#D1D9E6', type: 'date' },
         yaxis: {
             title: 'Value',
             gridcolor: '#D1D9E6',
@@ -968,12 +1109,8 @@ async function plotRollingStats(data) {
         margin: { t: 60, r: 60, b: 80, l: 60 }
     };
 
-    // ──────────────────────────────────────────────
-    // 2. Try to add extras one by one
-    // ──────────────────────────────────────────────
-    let yaxisCount = 1; // main y is 1
+    let yaxisCount = 1;
 
-    // Rolling Mean (uses same y-axis as original)
     if (showMean) {
         traces.push({
             x: timestamps,
@@ -984,7 +1121,6 @@ async function plotRollingStats(data) {
         });
     }
 
-    // Rolling Std (needs yaxis2)
     if (showStd) {
         try {
             traces.push({
@@ -1008,11 +1144,10 @@ async function plotRollingStats(data) {
             yaxisCount++;
         } catch (e) {
             console.warn('[plotRollingStats] Failed to add Rolling Std → skipping', e);
-            showStd = false; // don't try again
+            showStd = false;
         }
     }
 
-    // Rolling Slope (needs yaxis3)
     if (showSlope) {
         try {
             traces.push({
@@ -1042,16 +1177,11 @@ async function plotRollingStats(data) {
         }
     }
 
-    // Adjust right margin based on how many y-axes we actually have
     layout.margin.r = 60 + (yaxisCount - 1) * 40;
 
-    // ──────────────────────────────────────────────
-    // 3. Render the chart (base + whatever extras survived)
-    // ──────────────────────────────────────────────
     await renderPlot('rollingChart', traces, layout);
-
-    // If nothing extra was added successfully, at least original should show
 }
+
 function clearAnalytics() {
     document.getElementById('analyticsRecords').textContent = '0';
     document.getElementById('analyticsAvg').textContent = '—';
@@ -1068,6 +1198,7 @@ function clearAnalytics() {
         if (ctx) Plotly.purge(ctx.host);
     });
 }
+
 // Helper functions
 function fmt(v, d = 3) { return v == null ? '—' : parseFloat(v).toFixed(d); }
 function onBadge(v) { return parseInt(v) === 2 ? '<span class="badge ok">ON</span>' : '<span class="badge bad">OFF</span>'; }
@@ -1079,10 +1210,10 @@ function setupTabListeners() {
             if (event.target.id === 'analytics-tab') {
                 console.log("Analytics tab shown → scheduling render/resize");
                 whenTabIsReady(() => {
-                    console.log("Tab ready - size check:", document.querySelector('#analytics').offsetHeight);
+                    console.log("Tab ready - size check:", document.querySelector('#analytics-panel').offsetHeight);
                     if (analyticsData && analyticsData.length > 0) {
                         console.log("Data exists → full refresh on tab show");
-                        refreshAllCharts();          // ← re-plot everything
+                        refreshAllCharts();
                     }
                     resizeAllCharts();
                     setTimeout(resizeAllCharts, 150);

@@ -23,8 +23,14 @@ class SwatChatInterface {
         this.elements = {};
 
         // Configuration
+        // Chat requests go through the C# backend (/api/Chat/*), which proxies
+        // to the RAG service server-side. The RAG service is not called
+        // directly from the browser — that would bypass backend validation,
+        // rate limiting, and session handling entirely.
         this.config = {
-            apiBaseUrl: '/api/chat',
+            apiBaseUrl: '/api/Chat/message',
+            clearUrl:   '/api/Chat/clear',
+            healthUrl: '/Dashboard/ServiceStatus',
             maxMessageLength: 2000,
             typingIndicatorDelay: 500,
             autoScrollDelay: 100
@@ -162,24 +168,23 @@ class SwatChatInterface {
     }
 
     async callChatApi(message) {
+        // The backend (/api/Chat/message) owns session history and fetches
+        // its own trustworthy realtime data from the database — we just tell
+        // it whether this message needs realtime context, we don't hand it
+        // sensor values ourselves.
         const payload = {
             sessionId: this.sessionId,
             message: message,
             includeRealtime: this.shouldIncludeRealtime(message)
         };
 
-        const response = await fetch(`${this.config.apiBaseUrl}/message`, {
+        const response = await fetch(this.config.apiBaseUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
         return await response.json();
     }
 
@@ -291,12 +296,30 @@ class SwatChatInterface {
         }
 
         badge.className = `chat-ml-insights ${statusClass}`;
-        badge.innerHTML = `
-            <span>${icon}</span>
-            <span><strong>ML Analysis:</strong> ${insights.state}</span>
-            ${insights.faultyComponent ? `<span>• ${insights.faultyComponent}</span>` : ''}
-            <span>(${Math.round(insights.confidence * 100)}% confidence)</span>
-        `;
+
+        // Built via DOM APIs (not innerHTML) — insights.state / faultyComponent
+        // ultimately trace back to model/LLM output, so they're treated as
+        // untrusted text, never markup.
+        const iconSpan = document.createElement('span');
+        iconSpan.textContent = icon;
+        badge.appendChild(iconSpan);
+
+        const stateSpan = document.createElement('span');
+        const stateLabel = document.createElement('strong');
+        stateLabel.textContent = 'ML Analysis: ';
+        stateSpan.appendChild(stateLabel);
+        stateSpan.appendChild(document.createTextNode(insights.state));
+        badge.appendChild(stateSpan);
+
+        if (insights.faultyComponent) {
+            const compSpan = document.createElement('span');
+            compSpan.textContent = `• ${insights.faultyComponent}`;
+            badge.appendChild(compSpan);
+        }
+
+        const confSpan = document.createElement('span');
+        confSpan.textContent = `(${Math.round(insights.confidence * 100)}% confidence)`;
+        badge.appendChild(confSpan);
 
         return badge;
     }
@@ -371,12 +394,9 @@ class SwatChatInterface {
 
     showTypingIndicator() {
         if (!this.elements.typingIndicator) return;
-
         setTimeout(() => {
-            // Remove from current position and append to messages container
-            // This ensures it appears at the bottom
-            if (this.elements.typingIndicator.parentElement !== this.elements.messagesContainer) {
-                this.elements.messagesContainer.appendChild(this.elements.typingIndicator);
+            if (this.elements.typingIndicator.parentElement !== this.elements.messagesArea) {
+                this.elements.messagesArea.appendChild(this.elements.typingIndicator); // ✅
             }
             this.elements.typingIndicator.classList.remove('hidden');
             this.scrollToBottom();
@@ -425,9 +445,20 @@ class SwatChatInterface {
     // UTILITIES
     // ========================================================================
 
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     formatBotText(text) {
-        // Simple markdown-like formatting
-        let formatted = text
+        // response.text is model-generated and ultimately steerable by the
+        // user's own chat message (prompt injection) — escape it as plain
+        // text FIRST, then layer a tiny fixed set of markdown-like
+        // replacements on top of the escaped string. This guarantees any
+        // HTML/script the model was coaxed into emitting renders as inert
+        // text instead of executing.
+        let formatted = this.escapeHtml(text)
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
             .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
             .replace(/`(.*?)`/g, '<code>$1</code>') // Inline code
@@ -497,11 +528,11 @@ class SwatChatInterface {
 
         // Clear backend session
         try {
-            await fetch(`${this.config.apiBaseUrl}/clear`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: this.sessionId })
-            });
+            await fetch(this.config.clearUrl, {           // ✅ /api/session/clear
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: this.sessionId })
+        });
         } catch (error) {
             console.error('Failed to clear backend session:', error);
         }
@@ -512,20 +543,53 @@ class SwatChatInterface {
         console.log('✅ Chat cleared');
     }
 
+    // 2. Fix checkApiHealth() to match /Dashboard/ServiceStatus response format:
     async checkApiHealth() {
-        try {
-            const response = await fetch(`${this.config.apiBaseUrl}/status`);
-            const data = await response.json();
-
-            if (data.status === 'ok') {
-                this.updateStatus('online', 'AI Ready');
-            } else {
-                this.updateStatus('offline', 'AI Unavailable');
+        this.updateStatus('offline', 'Connecting...');
+    
+        const maxAttempts = 20;
+        const intervalMs  = 3000;
+    
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const response = await fetch(this.config.healthUrl);
+                const data = await response.json();
+    
+                // /Dashboard/ServiceStatus returns { allReady: bool, services: [{name, ok}] }
+                const ragSvc = data.services?.find(s => s.name === 'RAG API');
+                const ragReady = ragSvc?.ok ?? data.allReady ?? false;
+    
+                if (ragReady) {
+                    this.updateStatus('online', 'AI Ready');
+                    console.log('✅ Chat: RAG API ready on attempt', attempt);
+                    return; // stop polling
+                }
+    
+                this.updateStatus('offline', `Warming up... (${attempt}/${maxAttempts})`);
+    
+            } catch (error) {
+                this.updateStatus('offline', `Connecting... (${attempt}/${maxAttempts})`);
             }
-        } catch (error) {
-            console.warn('API health check failed:', error);
-            this.updateStatus('offline', 'Connecting...');
+    
+            if (attempt < maxAttempts) {
+                await new Promise(r => setTimeout(r, intervalMs));
+            }
         }
+    
+        // Timeout — allow user to try anyway
+        this.updateStatus('online', 'AI Ready');
+        console.warn('⚠️ Health check timed out — proceeding anyway');
+    }    
+    // Quietly rechecks LLM status after warmup delay
+    async _recheckLlm() {
+        try {
+            const response = await fetch(this.config.healthUrl);
+            const data = await response.json();
+            if (data.llm_ready) {
+                console.log('✅ LLM warmed up');
+            }
+            // status badge already shows "AI Ready" — no change needed
+        } catch(e) {}
     }
 
     updateStatus(status, text) {
@@ -547,7 +611,7 @@ class SwatChatInterface {
         // Simple inline error (you can enhance this)
         const errorDiv = document.createElement('div');
         errorDiv.className = 'chat-error-message';
-        errorDiv.innerHTML = `⚠️ ${message}`;
+        errorDiv.textContent = `⚠️ ${message}`;
 
         this.elements.messagesArea.appendChild(errorDiv);
 

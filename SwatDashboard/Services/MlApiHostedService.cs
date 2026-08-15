@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -80,9 +80,15 @@ public class MlApiHostedService : IHostedService
         _logger.LogInformation("MlScript:    {MlScript}", mlScript);
 
         if (!Directory.Exists(mlDir))
-            throw new DirectoryNotFoundException($"ML directory not found: {mlDir}");
+        {
+            _logger.LogWarning("ML directory not found: {MlDir} — skipping local ML startup (using external API)", mlDir);
+            return;
+        }
         if (!File.Exists(mlScript))
-            throw new FileNotFoundException($"ML script not found: {mlScript}");
+        {
+            _logger.LogWarning("ML script not found: {MlScript} — skipping local ML startup (using external API)", mlScript);
+            return;
+        }
 
         if (_mlProcess is { HasExited: false })
         {

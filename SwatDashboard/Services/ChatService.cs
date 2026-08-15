@@ -23,8 +23,7 @@ namespace SwatDashboard.Services
         private readonly ILogger<ChatService> _logger;
         private readonly string _ragApiUrl;
         private readonly string _mlApiUrl;
-        private readonly DatabaseConnectionInfo _dbConnectionInfo;
-        
+
         // JSON serialization options
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
@@ -48,12 +47,6 @@ namespace SwatDashboard.Services
             // Get ML API URL from configuration
             _mlApiUrl = configuration["SwatSettings:PythonMlApiUrl"] 
                 ?? "http://127.0.0.1:5000";
-            
-            // Build database connection info
-            var connectionString = configuration.GetConnectionString("SwatDatabase") 
-                ?? throw new InvalidOperationException("Database connection string not found");
-            
-            _dbConnectionInfo = ParseConnectionString(connectionString);
             
             _logger.LogInformation(
                 "ChatService initialized - RAG API: {RagUrl}, ML API: {MlUrl}", 
@@ -120,7 +113,7 @@ namespace SwatDashboard.Services
                 {
                     Success = false,
                     Text = GetUserFriendlyErrorMessage(ex),
-                    Error = ex.Message,
+                    Error = ex.GetType().Name,
                     Metadata = new ChatMetadata
                     {
                         ProcessingTimeMs = stopwatch.ElapsedMilliseconds
@@ -205,11 +198,10 @@ namespace SwatDashboard.Services
                 SessionId = Guid.NewGuid().ToString(),
                 Message = message,  // Ensure message is passed correctly
                 ConversationHistory = historyForRag,
-                RealtimeData = realtimePayload,
-                DatabaseConnection = _dbConnectionInfo
+                RealtimeData = realtimePayload
             };
 
-            _logger.LogInformation($"RAG Request built - SessionId: {request.SessionId}, Message: '{request.Message}'");
+            _logger.LogInformation("RAG Request built - SessionId: {SessionId}", request.SessionId);
 
             return request;
         }
@@ -228,10 +220,8 @@ namespace SwatDashboard.Services
             {
                 try
                 {
-                    var requestJson = JsonSerializer.Serialize(request);
-                    _logger.LogInformation($"Sending to RAG API: {requestJson}");
                     _logger.LogDebug("RAG API call attempt {Attempt}/{MaxRetries}", attempt, maxRetries);
-                    
+
                     return await CallRagApiAsync(request);
                 }
                 catch (HttpRequestException ex) when (attempt < maxRetries)
@@ -362,32 +352,6 @@ namespace SwatDashboard.Services
                 
                 _ => 
                     "I encountered an unexpected error. Please try again or contact support if the issue persists."
-            };
-        }
-        
-        // ====================================================================
-        // PRIVATE METHODS - UTILITY
-        // ====================================================================
-        
-        private DatabaseConnectionInfo ParseConnectionString(string connectionString)
-        {
-            // Simple parser for SQL Server connection string
-            var parts = connectionString.Split(';')
-                .Select(p => p.Trim())
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p =>
-                {
-                    var kvp = p.Split('=', 2);
-                    return new { Key = kvp[0].Trim().ToLower(), Value = kvp.Length > 1 ? kvp[1].Trim() : "" };
-                })
-                .ToDictionary(x => x.Key, x => x.Value);
-            
-            return new DatabaseConnectionInfo
-            {
-                Server = parts.GetValueOrDefault("server") ?? parts.GetValueOrDefault("data source") ?? "localhost",
-                Database = parts.GetValueOrDefault("database") ?? parts.GetValueOrDefault("initial catalog") ?? "swat",
-                Username = parts.GetValueOrDefault("user id") ?? parts.GetValueOrDefault("uid") ?? "swat_ingest",
-                Password = parts.GetValueOrDefault("password") ?? parts.GetValueOrDefault("pwd") ?? ""
             };
         }
     }
