@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Live Monitoring";
+    ViewData["Title"] = "SWaT Dashboard";
     Layout = "_Layout";
 }
 
@@ -9,86 +9,9 @@
         Sewage Water Treatment Plant
     </div>
     <div class="swat-subtitle">
-        Intelligent SCADA System Using GENAI
+        Real-time monitoring and analytics dashboard
     </div>
 </div>
-
-<!-- ── WAKE-UP SPLASH SCREEN ── -->
-<div id="splashScreen" style="
-    position: fixed; inset: 0; z-index: 9999;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    font-family: 'Segoe UI', sans-serif;
-    transition: opacity 0.8s ease;">
-
-    <!-- Logo / Title -->
-    <div style="text-align:center; margin-bottom: 40px;">
-        <div style="font-size: 48px; margin-bottom: 12px;">🏭</div>
-        <h1 style="color: #e0e0e0; font-size: 28px; font-weight: 300; margin: 0;">
-            Sewage Water Treatment Plant
-        </h1>
-        <p style="color: #7f8c8d; font-size: 14px; margin-top: 8px;">
-            Intelligent SCADA System — Starting up services...
-        </p>
-    </div>
-
-    <!-- Service status list -->
-    <div id="serviceList" style="
-        background: rgba(255,255,255,0.05);
-        border-radius: 12px; padding: 24px 32px;
-        min-width: 320px; margin-bottom: 32px;">
-        
-        <div class="svc-row" id="svc-ml">
-            <span class="svc-icon">⏳</span>
-            <span class="svc-name">ML API</span>
-            <span class="svc-status">Waking up...</span>
-        </div>
-        <div class="svc-row" id="svc-ingest">
-            <span class="svc-icon">⏳</span>
-            <span class="svc-name">Ingest Service</span>
-            <span class="svc-status">Waking up...</span>
-        </div>
-        <div class="svc-row" id="svc-sender">
-            <span class="svc-icon">⏳</span>
-            <span class="svc-name">Plant Sender</span>
-            <span class="svc-status">Waking up...</span>
-        </div>
-        <div class="svc-row" id="svc-rag">
-            <span class="svc-icon">⏳</span>
-            <span class="svc-name">RAG / Chat API</span>
-            <span class="svc-status">Waking up...</span>
-        </div>
-    </div>
-
-    <!-- Progress bar -->
-    <div style="width: 320px; background: rgba(255,255,255,0.1); border-radius: 99px; height: 6px;">
-        <div id="splashProgress" style="
-            width: 0%; height: 100%;
-            background: linear-gradient(90deg, #3498db, #2ecc71);
-            border-radius: 99px;
-            transition: width 0.5s ease;"></div>
-    </div>
-    <p id="splashMsg" style="color: #7f8c8d; font-size: 13px; margin-top: 12px;">
-        Initializing...
-    </p>
-</div>
-
-<style>
-.svc-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
-    color: #bdc3c7; font-size: 14px;
-}
-.svc-row:last-child { border-bottom: none; }
-.svc-icon { font-size: 18px; width: 24px; text-align: center; }
-.svc-name { flex: 1; }
-.svc-status { font-size: 12px; color: #7f8c8d; }
-.svc-ok .svc-icon::before { content: '✅'; }
-.svc-ok .svc-status { color: #2ecc71; }
-.svc-fail .svc-icon::before { content: '❌'; }
-.svc-fail .svc-status { color: #e74c3c; }
-</style>
 
 <!-- Tab Navigation -->
 <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
@@ -105,7 +28,7 @@
     <!-- NEW: AI Chat Tab -->
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-panel" type="button" role="tab">
-            💬 ChatBot
+            💬 AI Chat
         </button>
     </li>
 </ul>
@@ -135,7 +58,7 @@
                     <div class="swat-value-small" id="lastUpdate">—</div>
                 </div>
                 <div class="swat-card">
-                    <div class="swat-label">Connection (5 secs)</div>
+                    <div class="swat-label">Connection</div>
                     <div class="swat-value" id="connection">—</div>
                 </div>
             </div>
@@ -257,42 +180,33 @@
                         </div>
                     </div>
                     <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="ml-status-card ml-status-monitor" id="mlBufferCard">
+                        <div class="ml-status-card" id="mlBufferCard">
                             <div class="ml-card-title">BUFFER STATUS</div>
-                            <div class="ml-card-value" id="mlBufferValue">⏳ WARMING</div>
-                            <div class="ml-card-label" id="mlBufferLabel">Initializing...</div>
+                            <div class="ml-card-value" id="mlBufferValue">—</div>
+                            <div class="ml-card-label" id="mlBufferLabel">Filling...</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Component Health & Actions -->
-                <div class="row">
-                    <div class="col-12 mb-3">
-                        <h6>Top 3 Suspects</h6>
-                        <div id="componentHealth"></div>
-                    </div>
+                <!-- Component Health Grid -->
+                <div class="component-health-grid mb-3" id="componentHealthGrid"></div>
 
-                    <div class="col-12">
-                        <h6>Recommended Actions</h6>
-                        <div id="recommendedActions"></div>
-                    </div>
-                </div>
-
+                <!-- Recommended Actions -->
+                <div class="recommendations-section" id="recommendationsSection"></div>
             </div>
 
         </div>
     </div>
 
     <!-- ====================================================================== -->
-    <!-- ANALYTICS DASHBOARD TAB - EXACT STREAMLIT LAYOUT -->
+    <!-- ANALYTICS DASHBOARD TAB -->
     <!-- ====================================================================== -->
     <div class="tab-pane fade" id="analytics-panel" role="tabpanel">
         <div id="analytics-dashboard">
             
-            <!-- A) TIME WINDOW + FILTERS - Exact Streamlit Layout -->
-            <h4 class="section-title">A) Time Window + Filters</h4>
-            
-            <div class="row g-3 mb-2">
+            <!-- A) TIME WINDOW SELECTOR - Exact Match -->
+            <h4 class="section-title">A) Time Window Selector</h4>
+            <div class="row g-3 mb-3">
                 <div class="col-md-2">
                     <label class="form-label">Window</label>
                     <select id="windowPreset" class="form-select">
@@ -496,7 +410,7 @@
                 
                 <!-- Empty State (shown when no messages) -->
                 <div class="chat-empty-state" id="chat-empty-state">
-                    <!-- <div class="chat-empty-state-icon">💬</div> -->
+                    <div class="chat-empty-state-icon">💬</div>
                     <div class="chat-empty-state-title">Start a Conversation</div>
                     <p>Ask me anything about your SWAT system:</p>
                     <div class="chat-empty-state-suggestions">

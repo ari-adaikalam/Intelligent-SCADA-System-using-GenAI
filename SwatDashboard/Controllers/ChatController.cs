@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using SwatDashboard.Models;
 using SwatDashboard.Services;
@@ -16,6 +17,7 @@ namespace SwatDashboard.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting("chat")]
     public class ChatController : ControllerBase
     {
         private readonly ChatService _chatService;
@@ -197,7 +199,7 @@ namespace SwatDashboard.Controllers
                 {
                     Success = false,
                     Text = "An unexpected error occurred. Please try again.",
-                    Error = ex.Message
+                    Error = "internal_error"
                 });
             }
         }

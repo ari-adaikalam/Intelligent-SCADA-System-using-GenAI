@@ -200,24 +200,6 @@ public class RagApiRequest
 
         [JsonPropertyName("realtimeData")]
         public object? RealtimeData { get; set; }
-
-        [JsonPropertyName("databaseConnection")]
-        public DatabaseConnectionInfo DatabaseConnection { get; set; } = new();
-    }
-
-    public class DatabaseConnectionInfo
-    {
-        [JsonPropertyName("server")]
-        public string Server { get; set; } = string.Empty;
-
-        [JsonPropertyName("database")]
-        public string Database { get; set; } = string.Empty;
-
-        [JsonPropertyName("username")]
-        public string Username { get; set; } = string.Empty;
-
-        [JsonPropertyName("password")]
-        public string Password { get; set; } = string.Empty;
     }
 
     /// <summary>
