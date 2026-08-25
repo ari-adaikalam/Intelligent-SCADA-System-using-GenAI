@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+
+# Raw baseline data, download from the published Kaggle dataset instead
+data-simulation/clean_1.csv
+
+# Generated build artifacts, regenerate with build_metadata.py / build_notebook.py
+data-simulation/output/
+
+# ML training outputs: scaled arrays, trained models, evaluation results
+ml-training/output/
+ml-training/models/
+ml-training/results/
+ml-training/experimental_output/

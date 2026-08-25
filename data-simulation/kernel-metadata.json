@@ -1,0 +1,14 @@
+{
+  "id": "ariadaikalam/swat-digital-twin-simulator",
+  "title": "SWaT Digital Twin Simulator",
+  "code_file": "digital_twin_notebook.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": false,
+  "enable_internet": false,
+  "dataset_sources": ["ariadaikalam/fyp-ml-dataset"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
