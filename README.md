@@ -79,7 +79,7 @@ The objective of this project is to design an **Intelligent SCADA System** power
 
 ## Data & Physics-Based Digital Twin
 
-This digital twin isn't just a training set. It's the data source for the entire running system: the live dashboard, the analytics views, the ML predictions, and the RAG chatbot's answers all trace back to rows this simulator generated. There is no physical plant behind any of it (see [Limitations](#limitations--scope)), the simulator is the plant.
+This digital twin is the data source for the entire running system: the live dashboard, the analytics views, the ML predictions, and the RAG chatbot's answers all trace back to rows this simulator generated. There is no physical plant behind any of it (see [Limitations](#limitations--scope)), the simulator is the plant.
 
 **Source**: [SWaT Dataset, Secure Water Treatment System](https://www.kaggle.com/datasets/vishala28/swat-dataset-secure-water-treatment-system) on Kaggle, real sensor and actuator readings from a scaled-down water treatment testbed, almost entirely normal operation.
 
@@ -143,7 +143,7 @@ The conversational interface is powered by a 7-stage RAG pipeline:
 | 6. Report Integration | If report request — generates PDF/Excel with actual plant data |
 | 7. Response Generation | LLM explains results in natural language + generates Chart.js config for visualizations |
 
-> RAG = Retrieval-Augmented Generation — grounds LLM responses to actual plant data, eliminating hallucination of schema and column names.
+> RAG = Retrieval-Augmented Generation - grounds LLM responses to actual plant data, eliminating hallucination of schema and column names.
 
 ---
 
@@ -164,25 +164,13 @@ Each alert includes the affected component, top 3 suspected causes, confidence l
 
 ## Key Innovations
 
-- **Physics-based synthetic fault generation** — real SWaT baseline sensor data is replayed and perturbed by a purpose-built digital twin, not sampled or bootstrapped, so failure signatures follow actual pump and valve degradation physics instead of arbitrary noise.
-- **Scheduled training data, randomly timed held-out data** — the models train on a dataset where every fault type is guaranteed to appear, then get evaluated against a second, independently generated dataset with realistic random timing they never saw during training. Every reported metric in this README is measured on that held-out set.
-- **Hierarchical rather than monolithic fault diagnosis** — anomaly detection, state classification, and component identification are three separate models chained together, not one model trying to answer all three questions at once. Each stage only has to be right at what it's actually good at.
-- **ML folded directly into the conversational interface** — predictive maintenance results aren't a separate dashboard tab, the RAG pipeline calls the 3-stage ML pipeline mid-conversation and narrates the result in plain English.
-- **Natural language to grounded SQL to plant data** — the chatbot generates real, read-only SQL against the live database rather than answering from a static knowledge base, so it can't hallucinate a sensor reading or a schema that doesn't exist.
-- **Confidence-based alert escalation** — DEGRADING and FAULTED states escalate through email, SMS, and phone call differently depending on model confidence, not a flat threshold.
-- **SCADA-style real-time architecture, honestly scoped** — SignalR push, a live ingest pipeline, and a historian-style data flow, built to demonstrate the pattern a real SCADA system uses, without claiming a physical plant is connected (see [Limitations](#limitations--scope)).
-
-## Tech Stack
-
-| Layer | Technologies |
-|---|---|
-| Frontend | ASP.NET Core MVC, Chart.js, SignalR |
-| Backend | C#, ASP.NET Core 8, Flask (Python), Docker |
-| AI / RAG | Mistral 7B Instruct v0.3 (Ollama) / Groq (Llama 3.3 70B), ChromaDB, retrieval-augmented generation |
-| ML | TensorFlow, XGBoost, LightGBM |
-| Data | PostgreSQL (Supabase) |
-| Reporting | iTextSharp, EPPlus |
-| Hosting | Render, Hugging Face Spaces |
+- **Physics-based synthetic fault generation**
+- **Scheduled training data, randomly timed held-out data**
+- **Hierarchical rather than monolithic fault diagnosis**
+- **ML folded directly into the conversational interface**
+- **Natural language to grounded SQL to plant data**
+- **Confidence-based alert escalation**
+- **SCADA-style real-time architecture**
 
 ## Repository Structure
 
