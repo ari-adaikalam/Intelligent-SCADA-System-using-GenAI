@@ -18,7 +18,7 @@ The objective of this project is to design an **Intelligent SCADA System** power
 
 ## Live Demo
 
-**🔗 Deployed Application**: [Live Demo](https://swat-dashboard-hlxg.onrender.com/)
+**🔗 Deployed Application**: [Live Demo](https://swat-dashboard.ariadaikalam.com)
 > **Note**: The deployed version uses **Groq (llama-3.3-70b-versatile)** as the LLM. The local version used **Mistral 7B Instruct v0.3 (4-bit quantized)** via Ollama, which delivered superior RAG and SQL generation performance due to tighter domain grounding and please be aware that the application may require a few minutes to cold-start upon your first visit.
 >
 > The live demo cycles through a 480-row sample (roughly 12 minutes at the Plant Sender's current send rate) so a visitor sees NORMAL, ANOMALY, DEGRADING, and FAULT states within one visit instead of waiting through the hours a real degradation episode takes in the full simulation.
